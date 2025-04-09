@@ -1,0 +1,64 @@
+<schema languageCode="EN" dateUtc="2/12/2024">
+  <segment code="50000000" text="Food/Beverage" definition="" active="true">
+    <family code="50180000" text="Bread/Bakery Products" definition="" active="true">
+      <class code="50181700" text="Baking/Cooking Mixes/Supplies" definition="" active="true">
+        <brick code="10000155" text="Baking/Cooking Mixes (Frozen)" definition="Includes any products that can be described/observed as a quantity of frozen, pre-mixed dough, batter or powder that is specifically intended to produce bread, cakes, biscuits, desserts, or other products. Products may be ready to use (where no additional ingredients need to be added to the mix prior to use) or require the addition of wet ingredients such as water, milk, oil, fat or egg. These products must be frozen to extend their consumable life." active="true" definitionExcludes="Excludes products such as Soups, Perishable or Shelf-Stable Baking Mixes, all Part Baked and Baked Products.">
+          <attType code="20000056" text="Diabetic Claim" definition="Indicates, with reference to the product branding, labelling or packaging, whether the product makes a claim to be suitable for consumption by consumers who have diabetes." active="true">
+            <attValue code="30002960" text="NO" definition="" active="true" />
+            <attValue code="30002518" text="UNIDENTIFIED" definition="This term is used to describe those product attributes that are unidentifiable given existing or available product information." active="true" />
+            <attValue code="30002654" text="YES" definition="" active="true" />
+          </attType>
+          <attType code="20000142" text="If Organic" definition="Indicates, with reference to the product branding, labelling or packaging the descriptive term that is used by the product manufacturer to identify the presence of an industry recognized &quot;organic&quot; certification upon the product labelling or packaging." active="true">
+            <attValue code="30002960" text="NO" definition="" active="true" />
+            <attValue code="30002518" text="UNIDENTIFIED" definition="This term is used to describe those product attributes that are unidentifiable given existing or available product information." active="true" />
+            <attValue code="30002654" text="YES" definition="" active="true" />
+          </attType>
+          <attType code="20003041" text="Method of Preparation" definition="Indicates, with reference to the product branding, labelling or packaging, the descriptive term that is used by the product manufacturer to identify the method of preparing the baking/cooking mix." active="true">
+            <attValue code="30000252" text="BAKING" definition="" active="true" />
+            <attValue code="30012526" text="BLENDING/MIXING" definition="" active="true" />
+            <attValue code="30000393" text="BOILING" definition="" active="true" />
+            <attValue code="30000721" text="COMBINATION OF METHODS" definition="" active="true" />
+            <attValue code="30006847" text="FREEZING" definition="" active="true" />
+            <attValue code="30001080" text="FRYING" definition="" active="true" />
+            <attValue code="30001194" text="GRILLING" definition="" active="true" />
+            <attValue code="30001584" text="MICROWAVING" definition="" active="true" />
+            <attValue code="30017823" text="REFRIGERATION" definition="" active="true" />
+            <attValue code="30002000" text="REHEATING" definition="" active="true" />
+            <attValue code="30002515" text="UNCLASSIFIED" definition="This term is used to describe those product attributes that are unable to be classified within their specific market; e.g. goat's cheese - goat's cheeses is often generically labelled and cannot be further classified." active="true" />
+            <attValue code="30002518" text="UNIDENTIFIED" definition="This term is used to describe those product attributes that are unidentifiable given existing or available product information." active="true" />
+          </attType>
+          <attType code="20003042" text="Requires Additional Ingredients" definition="Indicates, with reference to the product branding, labelling or packaging, the descriptive term that is used by the product manufacturer to identify whether or not the product requires additional ingredients." active="true">
+            <attValue code="30002960" text="NO" definition="" active="true" />
+            <attValue code="30002518" text="UNIDENTIFIED" definition="This term is used to describe those product attributes that are unidentifiable given existing or available product information." active="true" />
+            <attValue code="30002654" text="YES" definition="" active="true" />
+          </attType>
+          <attType code="20000175" text="Suitability for Vegetarians/Vegans Claim" definition="Indicates, with reference to the product branding, labelling or packaging, the descriptive term that is used by the product manufacturer to identify whether the product is suitable for Vegetarians and/or Vegans." active="true">
+            <attValue code="30002960" text="NO" definition="" active="true" />
+            <attValue code="30002518" text="UNIDENTIFIED" definition="This term is used to describe those product attributes that are unidentifiable given existing or available product information." active="true" />
+            <attValue code="30002534" text="VEGANS" definition="" active="true" />
+            <attValue code="30002541" text="VEGETARIANS" definition="" active="true" />
+          </attType>
+          <attType code="20000013" text="Type of Baking/Cooking Mix" definition="Indicates, with reference to the product branding, labelling or packaging, the descriptive term that is used by the product manufacturer to identify the type of baking/cooking mix." active="true">
+            <attValue code="30000288" text="BATTER MIX" definition="" active="true" />
+            <attValue code="30017171" text="BREAD DOUGH MIX" definition="" active="true" />
+            <attValue code="30000508" text="CAKE MIX" definition="" active="true" />
+            <attValue code="30002955" text="COOKIE/BISCUIT MIX" definition="" active="true" />
+            <attValue code="30002742" text="DESSERT MIX" definition="" active="true" />
+            <attValue code="30006737" text="DOUGH MIX" definition="" active="true" />
+            <attValue code="30001009" text="FLAN BASE MIX" definition="" active="true" />
+            <attValue code="30017111" text="GELATINE MIX" definition="" active="true" />
+            <attValue code="30001129" text="GNOCCHI MIX" definition="" active="true" />
+            <attValue code="30017112" text="ICE POWDER MIX" definition="" active="true" />
+            <attValue code="30001644" text="MUFFIN MIX" definition="" active="true" />
+            <attValue code="30001785" text="PASTRY MIX" definition="" active="true" />
+            <attValue code="30001937" text="PUDDING MIX" definition="" active="true" />
+            <attValue code="30002836" text="STUFFING MIX" definition="" active="true" />
+            <attValue code="30017113" text="SWEET NOODLE MIX" definition="" active="true" />
+            <attValue code="30002515" text="UNCLASSIFIED" definition="This term is used to describe those product attributes that are unable to be classified within their specific market; e.g. goat's cheese - goat's cheeses is often generically labelled and cannot be further classified." active="true" />
+            <attValue code="30002518" text="UNIDENTIFIED" definition="This term is used to describe those product attributes that are unidentifiable given existing or available product information." active="true" />
+          </attType>
+        </brick>
+      </class>
+    </family>
+  </segment>
+</schema>

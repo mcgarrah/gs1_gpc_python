@@ -13,14 +13,24 @@ TAG_SEGMENT = 'segment'
 TAG_FAMILY = 'family'
 TAG_CLASS = 'class'
 TAG_BRICK = 'brick'
+TAG_ATTRIB_TYPE = 'attType'
+TAG_ATTRIB_VALUE = 'attValue'
 
 # Adjust these attribute names if your GPC XML uses different ones
 ATTR_CODE = 'code'
 ATTR_TEXT = 'text'
+ATTR_DEFINITION = 'definition'
+ATTR_ACTIVE = 'active'
 
 # Adjust if your XML root tag is different
 EXPECTED_ROOT_TAG = 'schema'  
 
+# Default arguments
+DEFAULT_ARG_XML_FILE = './imports/gpc_data_full.xml'            # full feed
+#DEFAULT_ARG_XML_FILE = './imports/gpc_data.xml'                # only food/beverage
+#DEFAULT_ARG_XML_FILE = './imports/gpc_data_four_family.xml'    # only food/bev only four families
+#DEFAULT_ARG_XML_FILE = './imports/gpc_data_single_brick.xml'   # only food/bev only one family and one brick
+DEFAULT_ARG_DB_FILE = './instances/gpc_data_xml.db'
 
 
 # --- Logging Setup ---
@@ -184,23 +194,17 @@ def process_gpc_xml(xml_file_path, db_file_path):
         # 2. Parse XML
         logging.info(f"Parsing XML file: {xml_file_path}...")
         try:
+            # root = ET.parse(xml_file_path).getroot()
             tree = ET.parse(xml_file_path)
             root = tree.getroot()
             logging.info(f"XML parsing successful.")
 
-            # # Optional: Add check for expected root element if needed
-            # logging.debug(f"Root element: {root.tag}")
-            # # Example check (adjust 'expected_root_tag' as needed):
-            # if root.tag != 'expected_root_tag':
-            #     raise ValueError(f"Root element is not 'expected_root_tag', found '{root.tag}'")
-
             # Optional: Log root attributes
             logging.info(f"Root element: {root.tag}")
             logging.info(f"Root attributes: {root.attrib}")
-            # TODO: EXPECTED_ROOT_TAG replacement for 'schema' below
-            # Check if the root element is 'schema'
-            if root.tag != 'schema':
-                raise ValueError("Root element is not 'schema'")
+            # Check if the root element is EXPECTED_ROOT_TAG 'schema'
+            if root.tag != EXPECTED_ROOT_TAG:
+                raise ValueError("Root element is not <{EXPECTED_ROOT_TAG}> as expected but instead found <{root.tag}>.")
 
         except ET.ParseError as e:
             logging.error(f"XML parsing failed: {e}")
@@ -216,7 +220,7 @@ def process_gpc_xml(xml_file_path, db_file_path):
         logging.info("Starting data extraction and insertion...")
 
         # Determine the correct find expression based on root tag
-        # Example: If root is <GPCschema> or similar, direct children are segments.
+        # Example: If root is <schema> or similar, direct children are segments.
         # If root is something else, maybe segments are deeper e.g. './/segment'
         # Let's assume segments are direct children for now. Adjust if needed.
 
@@ -227,13 +231,9 @@ def process_gpc_xml(xml_file_path, db_file_path):
             # Try searching deeper if not found as direct children
             logging.debug(f"No direct children found matching '{TAG_SEGMENT}', searching anywhere with './/{TAG_SEGMENT}'")
             segment_elements = root.findall(f".//{TAG_SEGMENT}")
-
+        # Check if we found any segment elements in second conditional search above and report it
         if not segment_elements:
             logging.warning(f"No segment elements ('{TAG_SEGMENT}') found in the XML file. Check XML structure and TAG_SEGMENT constant.")
-            # Consider searching direct children if .// fails and you expect them there:
-            # segment_elements = root.findall(TAG_SEGMENT)
-            # if not segment_elements: ... log warning ...
-
 
         # --- Start Segment Loop ---
         for segment_elem in segment_elements:
@@ -376,16 +376,21 @@ def main():
         description="Import GS1 GPC XML data into an SQLite database.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter # Shows defaults in help message
     )
+
     parser.add_argument(
         "--xml-file",  # Optional argument
-        default="./imports/gpc_data_single.xml", # Default value
+        # default="./imports/gpc_data_single.xml", # Default value
+        default = DEFAULT_ARG_XML_FILE,
         help="Path to the input GS1 GPC XML file."
     )
+
     parser.add_argument(
         "--db-file",   # Optional argument
-        default="./instances/gpc_data_xml.db",  # Default value
+        # default="./instances/gpc_data_xml.db",  # Default value
+        default = DEFAULT_ARG_DB_FILE,
         help="Path to the output SQLite database file (will be created if it doesn't exist)."
     )
+
     parser.add_argument(
         "-v", "--verbose",
         default=True,
@@ -404,7 +409,6 @@ def main():
     if args.verbose:
         logging.debug("Verbose logging enabled.")
     # --- End Logger Level Configuration ---
-
 
     # Record start time
     start_time = datetime.now()

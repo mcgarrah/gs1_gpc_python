@@ -144,6 +144,32 @@ segment_code  family_code  class_code  brick_code  segment_text   family_text   
 50000000      50180000     50181900    10000163    Food/Beverage  Bread/Bakery Products  Bread                          Bread (Frozen)
 50000000      50180000     50181900    10000164    Food/Beverage  Bread/Bakery Products  Bread                          Bread (Perishable)
 50000000      50180000     50181900    10000165    Food/Beverage  Bread/Bakery Products  Bread                          Bread (Shelf Stable)
+
+sqlite> SELECT Segments.segment_code AS segment_code, Families.family_code, Classes.class_code, Bricks.brick_code,
+               Segments.description AS segment_text, Families.description AS family_text, Classes.description AS class_text, Bricks.description AS brick_text
+FROM Segments JOIN Families ON Segments.segment_code = Families.segment_code
+JOIN Classes ON Families.family_code = Classes.family_code
+JOIN Bricks ON Classes.class_code = Bricks.class_code
+WHERE Segments.segment_code = '50000000' LIMIT 16;
+
+segment_code  family_code  class_code  brick_code  segment_text   family_text                     class_text                                               brick_text
+------------  -----------  ----------  ----------  -------------  ------------------------------  -------------------------------------------------------  -----------------------------------------------
+50000000      50410000     50410100    10008449    Food/Beverage  Animal-derived Edible Products  Animal-derived Edible Products - Prepared/Processed      Edible Bird Nest - Prepared/Processed
+50000000      50410000     50410100    10008450    Food/Beverage  Animal-derived Edible Products  Animal-derived Edible Products - Prepared/Processed      Edible Donkey-hide Gelatin - Prepared/Processed
+50000000      50410000     50410200    10008451    Food/Beverage  Animal-derived Edible Products  Animal-derived Edible Products - Unprepared/Unprocessed  Edible Bird Nest - Unprepared/Unprocessed
+50000000      50200000     50202200    10008042    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Alcohol Flavouring Kit
+50000000      50200000     50202200    10000142    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Alcohol Making Kits
+50000000      50200000     50202200    10000143    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Alcohol Making Supplies
+50000000      50200000     50202200    10000591    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Alcoholic Beverages Variety Packs
+50000000      50200000     50202200    10000144    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Alcoholic Pre-mixed Drinks
+50000000      50200000     50202200    10000589    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Alcoholic Syrups and Bitters
+50000000      50200000     50202200    10000181    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Apple/Pear Alcoholic Beverage - Sparkling
+50000000      50200000     50202200    10006327    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Apple/Pear Alcoholic Beverage - Still
+50000000      50200000     50202200    10008032    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Apple/Pear Beverage - Sparkling (Non-Alcoholic)
+50000000      50200000     50202200    10008033    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Apple/Pear Beverage - Still (Non-Alcoholic)
+50000000      50200000     50202200    10000159    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Beer
+50000000      50200000     50202200    10008029    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Beer (Non-Alcoholic)
+50000000      50200000     50202200    10000227    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Liqueurs
 ```
 
 ## Data sources
