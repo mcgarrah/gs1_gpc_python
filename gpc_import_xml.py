@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO,
 
 # --- Database Functions ---
 
-def setup_database(db_path):
+def setup_database(db_file_path):
     """
     Connects to the SQLite database and creates GPC tables if they don't exist.
 
@@ -32,17 +32,17 @@ def setup_database(db_path):
     Returns:
         tuple: (sqlite3.Connection, sqlite3.Cursor) or (None, None) on failure.
     """
-    logging.info(f"Attempting to connect to database: {db_path}")
+    logging.info(f"Attempting to connect to database: {db_file_path}")
     try:
         # Check if directory exists, create if not
-        db_dir = os.path.dirname(db_path)
+        db_dir = os.path.dirname(db_file_path)
         # Ensure db_dir is not empty (happens if db_path is just a filename)
         # and that the directory doesn't already exist.
         if db_dir and not os.path.exists(db_dir):
              logging.info(f"Creating directory for database: {db_dir}")
              os.makedirs(db_dir)
 
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_file_path)
         cursor = conn.cursor()
         logging.info("Database connection successful.")
 
@@ -143,7 +143,7 @@ def insert_brick(cursor, brick_code, description, class_code):
 
 # --- XML Parsing and Processing Function ---
 
-def process_gpc_xml(xml_file_path, db_path):
+def process_gpc_xml(xml_file_path, db_file_path):
     """
     Parses the GPC XML file and inserts data into the SQLite database.
 
@@ -152,7 +152,7 @@ def process_gpc_xml(xml_file_path, db_path):
         db_path (str): Path to the SQLite database file.
     """
     logging.info(f"Starting GPC XML processing from: {xml_file_path}")
-    logging.info(f"Target database: {db_path}")
+    logging.info(f"Target database: {db_file_path}")
 
     conn, cursor = None, None # Initialize to ensure they exist for finally block
     counters = {
@@ -164,7 +164,7 @@ def process_gpc_xml(xml_file_path, db_path):
 
     try:
         # 1. Setup Database
-        conn, cursor = setup_database(db_path)
+        conn, cursor = setup_database(db_file_path)
         if not conn or not cursor:
             logging.error("Database setup failed. Aborting.")
             return # Exit if DB setup fails
@@ -174,13 +174,22 @@ def process_gpc_xml(xml_file_path, db_path):
         try:
             tree = ET.parse(xml_file_path)
             root = tree.getroot()
-            logging.info("XML parsing successful.")
+            logging.info(f"XML parsing successful.")
+            logging.info(f"Root element: {root.tag}")
+            logging.info(f"Root attributes: {root.attrib}")
+            # Check if the root element is 'schema'
+            if root.tag != 'schema':
+                raise ValueError("Root element is not 'schema'")
         except ET.ParseError as e:
             logging.error(f"XML parsing failed: {e}")
             return # Exit if XML parsing fails
         except FileNotFoundError:
             logging.error(f"XML file not found: {xml_file_path}")
             return # Exit if file not found
+        except ValueError as e:
+            logging.error(f"XML file does not have the expected structure: {xml_file_path} - {e}")
+            return
+
 
         # 3. Iterate and Insert Data
         logging.info("Starting data extraction and insertion...")
@@ -312,12 +321,12 @@ def main():
     )
     parser.add_argument(
         "--xml-file",  # Optional argument
-        default="./tmp/gpc_data_single.xml", # Default value
+        default="./imports/gpc_data_single.xml", # Default value
         help="Path to the input GS1 GPC XML file."
     )
     parser.add_argument(
         "--db-file",   # Optional argument
-        default="./tmp/gpc_data_xml.db",  # Default value
+        default="./instances/gpc_data_xml.db",  # Default value
         help="Path to the output SQLite database file (will be created if it doesn't exist)."
     )
     parser.add_argument(
