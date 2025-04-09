@@ -7,20 +7,31 @@ import logging
 from datetime import datetime
 
 # --- Configuration ---
+
 # Adjust these tag/attribute names if your GPC XML uses different ones
 TAG_SEGMENT = 'segment'
 TAG_FAMILY = 'family'
 TAG_CLASS = 'class'
 TAG_BRICK = 'brick'
+
+# Adjust these attribute names if your GPC XML uses different ones
 ATTR_CODE = 'code'
-ATTR_DESCRIPTION = 'description'
+ATTR_TEXT = 'text'
+
+# Adjust if your XML root tag is different
+EXPECTED_ROOT_TAG = 'schema'  
+
+
 
 # --- Logging Setup ---
+# Keep your existing logging setup
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
-                    handlers=[logging.StreamHandler(sys.stdout)]) # Log to console
+                    handlers=[logging.StreamHandler(sys.stdout)])
 
 # --- Database Functions ---
+# Below setup_database, insert_segment, insert_family, insert_class, and insert_brick
+# function are defined to handle the hierarchy.
 
 def setup_database(db_file_path):
     """
@@ -39,8 +50,8 @@ def setup_database(db_file_path):
         # Ensure db_dir is not empty (happens if db_path is just a filename)
         # and that the directory doesn't already exist.
         if db_dir and not os.path.exists(db_dir):
-             logging.info(f"Creating directory for database: {db_dir}")
-             os.makedirs(db_dir)
+            logging.info(f"Creating directory for database: {db_dir}")
+            os.makedirs(db_dir)
 
         conn = sqlite3.connect(db_file_path)
         cursor = conn.cursor()
@@ -145,11 +156,12 @@ def insert_brick(cursor, brick_code, description, class_code):
 
 def process_gpc_xml(xml_file_path, db_file_path):
     """
-    Parses the GPC XML file and inserts data into the SQLite database.
+    Parses the GPC XML file and inserts data into the SQLite database,
+    following the Segment -> Family -> Class -> Brick hierarchy.
 
     Args:
         xml_file_path (str): Path to the GPC XML file.
-        db_path (str): Path to the SQLite database file.
+        db_file_path (str): Path to the SQLite database file.
     """
     logging.info(f"Starting GPC XML processing from: {xml_file_path}")
     logging.info(f"Target database: {db_file_path}")
@@ -175,11 +187,21 @@ def process_gpc_xml(xml_file_path, db_file_path):
             tree = ET.parse(xml_file_path)
             root = tree.getroot()
             logging.info(f"XML parsing successful.")
+
+            # # Optional: Add check for expected root element if needed
+            # logging.debug(f"Root element: {root.tag}")
+            # # Example check (adjust 'expected_root_tag' as needed):
+            # if root.tag != 'expected_root_tag':
+            #     raise ValueError(f"Root element is not 'expected_root_tag', found '{root.tag}'")
+
+            # Optional: Log root attributes
             logging.info(f"Root element: {root.tag}")
             logging.info(f"Root attributes: {root.attrib}")
+            # TODO: EXPECTED_ROOT_TAG replacement for 'schema' below
             # Check if the root element is 'schema'
             if root.tag != 'schema':
                 raise ValueError("Root element is not 'schema'")
+
         except ET.ParseError as e:
             logging.error(f"XML parsing failed: {e}")
             return # Exit if XML parsing fails
@@ -190,14 +212,15 @@ def process_gpc_xml(xml_file_path, db_file_path):
             logging.error(f"XML file does not have the expected structure: {xml_file_path} - {e}")
             return
 
-
-        # 3. Iterate and Insert Data
+        # 3. Iterate and Insert Data with corrected Hierarchy
         logging.info("Starting data extraction and insertion...")
 
         # Determine the correct find expression based on root tag
         # Example: If root is <GPCschema> or similar, direct children are segments.
         # If root is something else, maybe segments are deeper e.g. './/segment'
         # Let's assume segments are direct children for now. Adjust if needed.
+
+        # Find all Segment elements (adjust path if necessary, e.g., './/SegmentList/Segment')
         logging.debug(f"Looking for elements matching tag '{TAG_SEGMENT}' under root <{root.tag}>")
         segment_elements = root.findall(TAG_SEGMENT)
         if not segment_elements:
@@ -206,79 +229,112 @@ def process_gpc_xml(xml_file_path, db_file_path):
             segment_elements = root.findall(f".//{TAG_SEGMENT}")
 
         if not segment_elements:
-             logging.warning(f"No segment elements ('{TAG_SEGMENT}') found in the XML file. Check XML structure and TAG_SEGMENT constant.")
+            logging.warning(f"No segment elements ('{TAG_SEGMENT}') found in the XML file. Check XML structure and TAG_SEGMENT constant.")
+            # Consider searching direct children if .// fails and you expect them there:
+            # segment_elements = root.findall(TAG_SEGMENT)
+            # if not segment_elements: ... log warning ...
 
 
+        # --- Start Segment Loop ---
         for segment_elem in segment_elements:
             counters['segments_processed'] += 1
             segment_code = segment_elem.get(ATTR_CODE)
-            segment_desc = segment_elem.get(ATTR_DESCRIPTION)
+            segment_desc = segment_elem.get(ATTR_TEXT)
 
             if not segment_code or not segment_desc:
-                # logging.warning(f"Skipping Segment element missing code or description: {ET.tostring(segment_elem, encoding='unicode').strip()}")
-                logging.warning(f"Skipping Segment element missing code or description...") # Simplified message
-                continue
+                logging.warning(f"Skipping Segment element missing code ('{ATTR_CODE}') or description ('{ATTR_TEXT}').")
+                continue # Skip to the next segment
 
             logging.debug(f"Processing Segment: {segment_code} - {segment_desc}")
             if insert_segment(cursor, segment_code, segment_desc):
                 counters['segments_inserted'] += 1
 
-            # Iterate through Families within the current Segment
+            # --- Start Family Loop (Nested within Segment) ---
+            # Find Family elements *directly under the current segment*
             for family_elem in segment_elem.findall(TAG_FAMILY):
                 counters['families_processed'] += 1
                 family_code = family_elem.get(ATTR_CODE)
-                family_desc = family_elem.get(ATTR_DESCRIPTION)
+                family_desc = family_elem.get(ATTR_TEXT)
 
                 if not family_code or not family_desc:
-                    # Use ET.tostring carefully, might error on malformed elements
-                    try:
-                         elem_str = ET.tostring(family_elem, encoding='unicode').strip()
-                         logging.warning(f"Skipping Family element missing code or description (under Segment {segment_code}): {elem_str}")
-                    except Exception:
-                         logging.warning(f"Skipping Family element missing code or description (under Segment {segment_code}): [Element details unavailable]")
-                    continue
+                    # # Use ET.tostring carefully, might error on malformed elements
+                    # try:
+                    #      elem_str = ET.tostring(family_elem, encoding='unicode').strip()
+                    #      logging.warning(f"Skipping Family element missing code or description (under Segment {segment_code}): {elem_str}")
+                    # except Exception:
+                    #      logging.warning(f"Skipping Family element missing code or description (under Segment {segment_code}): [Element details unavailable]")
+                    # continue
+                    logging.warning(f"Skipping Family element missing code or description (under Segment {segment_code}).")
+                    continue # Skip to the next family
 
-                logging.debug(f" Processing Family: {family_code} - {family_desc}")
+
+                logging.debug(f"  Processing Family: {family_code} - {family_desc} (under Segment {segment_code})")
                 if insert_family(cursor, family_code, family_desc, segment_code):
                     counters['families_inserted'] += 1
 
-                # Iterate through Classes within the current Family
+                # --- Start Class Loop (Nested within Family) ---
+                # Find Class elements *directly under the current family*
                 for class_elem in family_elem.findall(TAG_CLASS):
                     counters['classes_processed'] += 1
                     class_code = class_elem.get(ATTR_CODE)
-                    class_desc = class_elem.get(ATTR_DESCRIPTION)
+                    class_desc = class_elem.get(ATTR_TEXT)
 
                     if not class_code or not class_desc:
-                        try:
-                             elem_str = ET.tostring(class_elem, encoding='unicode').strip()
-                             logging.warning(f"Skipping Class element missing code or description (under Family {family_code}): {elem_str}")
-                        except Exception:
-                             logging.warning(f"Skipping Class element missing code or description (under Family {family_code}): [Element details unavailable]")
-                        continue
+                        # try:
+                        #      elem_str = ET.tostring(class_elem, encoding='unicode').strip()
+                        #      logging.warning(f"Skipping Class element missing code or description (under Family {family_code}): {elem_str}")
+                        # except Exception:
+                        #      logging.warning(f"Skipping Class element missing code or description (under Family {family_code}): [Element details unavailable]")
+                        # continue
+                        logging.warning(f"Skipping Class element missing code or description (under Family {family_code}).")
+                        continue # Skip to the next class
 
-                    logging.debug(f"  Processing Class: {class_code} - {class_desc}")
+                    logging.debug(f"    Processing Class: {class_code} - {class_desc} (under Family {family_code})")
+                    # Pass the correct family_code to insert_class
                     if insert_class(cursor, class_code, class_desc, family_code):
                         counters['classes_inserted'] += 1
 
-                    # Iterate through Bricks within the current Class
+                    # --- Start Brick Loop (Nested within Class) ---
+                    # Find Brick elements *directly under the current class*
                     for brick_elem in class_elem.findall(TAG_BRICK):
                         counters['bricks_processed'] += 1
                         brick_code = brick_elem.get(ATTR_CODE)
-                        brick_desc = brick_elem.get(ATTR_DESCRIPTION)
+                        brick_desc = brick_elem.get(ATTR_TEXT)
 
                         if not brick_code or not brick_desc:
-                            try:
-                                elem_str = ET.tostring(brick_elem, encoding='unicode').strip()
-                                logging.warning(f"Skipping Brick element missing code or description (under Class {class_code}): {elem_str}")
-                            except Exception:
-                                logging.warning(f"Skipping Brick element missing code or description (under Class {class_code}): [Element details unavailable]")
-                            continue
+                            # try:
+                            #     elem_str = ET.tostring(brick_elem, encoding='unicode').strip()
+                            #     logging.warning(f"Skipping Brick element missing code or description (under Class {class_code}): {elem_str}")
+                            # except Exception:
+                            #     logging.warning(f"Skipping Brick element missing code or description (under Class {class_code}): [Element details unavailable]")
+                            # continue
+                            logging.warning(f"Skipping Brick element missing code or description (under Class {class_code}).")
+                            continue # Skip to the next brick
 
-                        logging.debug(f"   Processing Brick: {brick_code} - {brick_desc}")
+                        logging.debug(f"      Processing Brick: {brick_code} - {brick_desc} (under Class {class_code})")
+                        # Pass the correct class_code to insert_brick
                         if insert_brick(cursor, brick_code, brick_desc, class_code):
                             counters['bricks_inserted'] += 1
 
                         # --- Optional: Add Attribute parsing/insertion here if needed ---
+
+                        # TODO: Attribute parsing logic GOES HERE
+                        # Example:
+                        # for attr in brick_elem.attrib:
+                        #     attr_name = attr.get('name')
+                        #     attr_value = attr.get('value')
+                        #     if attr_name and attr_value:
+                        #         logging.debug(f"        Found attribute: {attr_name} - {attr_value}")
+                        #         # Insert into database or process as needed
+                        #         # Example: insert_attribute(cursor, brick_code, attr_name, attr_value)
+                        #         # insert_attribute(cursor, brick_code, attr_name, attr_value)
+                        #         # Note: Ensure to handle duplicates or conflicts as per your schema
+                        #         # Example: insert_attribute(cursor, brick_code, attr_name, attr_value)
+
+                    # --- End Brick Loop ---
+                # --- End Class Loop ---
+            # --- End Family Loop ---
+        # --- End Segment Loop ---
 
         # 4. Commit changes
         logging.info("Committing changes to the database...")
@@ -287,7 +343,7 @@ def process_gpc_xml(xml_file_path, db_file_path):
 
     except Exception as e:
         # Catch any unexpected errors during processing
-        logging.error(f"An unexpected error occurred during processing: {e}", exc_info=True)
+        logging.error(f"An unexpected error occurred during processing: {e}", exc_info=True) # Log stack trace
         if conn:
             logging.warning("Rolling back database changes due to error.")
             conn.rollback()
@@ -308,7 +364,8 @@ def process_gpc_xml(xml_file_path, db_file_path):
         logging.info("----------------------")
         logging.info("GPC XML processing finished.")
 
-# --- Main Execution Block (Updated) ---
+
+# --- Main Execution Block ---
 
 def main():
     """
@@ -331,23 +388,22 @@ def main():
     )
     parser.add_argument(
         "-v", "--verbose",
+        default=True,
         action="store_true",
         help="Enable detailed debug logging."
     )
 
     args = parser.parse_args()
 
+    # --- Logger Level Configuration ---
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.getLogger().setLevel(log_level)
+    # Ensure all handlers respect the new level
+    for handler in logging.getLogger().handlers:
+        handler.setLevel(log_level)
     if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG) # Set root logger level
-        # Ensure handlers also process DEBUG messages if they exist
-        for handler in logging.getLogger().handlers:
-            handler.setLevel(logging.DEBUG)
         logging.debug("Verbose logging enabled.")
-    else:
-         # Set default level if not verbose
-         logging.getLogger().setLevel(logging.INFO)
-         for handler in logging.getLogger().handlers:
-             handler.setLevel(logging.INFO)
+    # --- End Logger Level Configuration ---
 
 
     # Record start time
@@ -367,5 +423,6 @@ def main():
     logging.info(f"Script finished at: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
     logging.info(f"Total execution time: {duration}")
 
+# This ensures the script runs only if executed directly, not when imported.
 if __name__ == "__main__":
     main()

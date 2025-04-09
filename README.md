@@ -30,6 +30,8 @@ Data from gpc_data.json imported successfully into gpc.db
 
 ### Review data in SQLite3 database
 
+From JSON Importer attempt
+
 ``` console
 sqlite> .databases
 main: /home/mcgarrah/github/food_service_nutrition/tmp/gpc.db r/w
@@ -58,6 +60,90 @@ CREATE TABLE bricks (
             );
 sqlite> .tables
 bricks    classes   families  segments
+```
+
+XML Importer code
+
+``` console
+sqlite> .database
+main: /home/mcgarrah/github/gs1_gpc_import/instances/gpc_data_xml.db r/w
+sqlite> .tables
+Bricks    Classes   Families  Segments
+
+sqlite> .schema
+CREATE TABLE Segments (
+            segment_code TEXT PRIMARY KEY,
+            description TEXT
+        );
+CREATE TABLE Families (
+            family_code TEXT PRIMARY KEY,
+            description TEXT,
+            segment_code TEXT,
+            FOREIGN KEY (segment_code) REFERENCES Segments (segment_code)
+        );
+CREATE TABLE Classes (
+            class_code TEXT PRIMARY KEY,
+            description TEXT,
+            family_code TEXT,
+            FOREIGN KEY (family_code) REFERENCES Families (family_code)
+        );
+CREATE TABLE Bricks (
+            brick_code TEXT PRIMARY KEY,
+            description TEXT,
+            class_code TEXT,
+            FOREIGN KEY (class_code) REFERENCES Classes (class_code)
+        );
+
+sqlite> SELECT Segments.segment_code AS segment_code, Families.family_code, Segments.description AS segment_text, Familie
+s.description AS family_text FROM Segments JOIN Families ON Segments.segment_code = Families.segment_code;
+50000000|50180000|Food/Beverage|Bread/Bakery Products
+50000000|50220000|Food/Beverage|Cereal/Grain/Pulse Products
+50000000|50150000|Food/Beverage|Oils/Fats Edible
+50000000|50190000|Food/Beverage|Prepared/Preserved Foods
+
+sqlite> .header on
+sqlite> SELECT Segments.segment_code AS segment_code, Families.family_code, Segments.description AS segment_text, Families.description AS family_text FROM Segments JOIN Families ON Segments.segment_code = Families.segment_code;
+segment_code|family_code|segment_text|family_text
+50000000|50180000|Food/Beverage|Bread/Bakery Products
+50000000|50220000|Food/Beverage|Cereal/Grain/Pulse Products
+50000000|50150000|Food/Beverage|Oils/Fats Edible
+50000000|50190000|Food/Beverage|Prepared/Preserved Foods
+
+sqlite> .mode column
+sqlite> SELECT Segments.segment_code AS segment_code, Families.family_code, Segments.description AS segment_text, Families.description AS family_text FROM Segments JOIN Families ON Segments.segment_code = Families.segment_code;
+segment_code  family_code  segment_text   family_text
+------------  -----------  -------------  ---------------------------
+50000000      50180000     Food/Beverage  Bread/Bakery Products
+50000000      50220000     Food/Beverage  Cereal/Grain/Pulse Products
+50000000      50150000     Food/Beverage  Oils/Fats Edible
+50000000      50190000     Food/Beverage  Prepared/Preserved Foods
+
+sqlite> .header on
+sqlite> .mode column
+sqlite> SELECT Segments.segment_code AS segment_code, Families.family_code, Classes.class_code, Bricks.brick_code,
+               Segments.description AS segment_text, Families.description AS family_text, Classes.description AS class_text, Bricks.description AS brick_text
+FROM Segments JOIN Families ON Segments.segment_code = Families.segment_code
+JOIN Classes ON Families.family_code = Classes.family_code
+JOIN Bricks ON Classes.class_code = Bricks.class_code
+LIMIT 16;
+segment_code  family_code  class_code  brick_code  segment_text   family_text            class_text                     brick_text
+------------  -----------  ----------  ----------  -------------  ---------------------  -----------------------------  -------------------------------------------
+50000000      50180000     50181700    10000155    Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)
+50000000      50180000     50181700    10000068    Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Perishable)
+50000000      50180000     50181700    10000156    Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Shelf Stable)
+50000000      50180000     50181700    10000595    Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes/Supplies Variety Packs
+50000000      50180000     50181700    10000157    Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Supplies (Frozen)
+50000000      50180000     50181700    10000069    Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Supplies (Perishable)
+50000000      50180000     50181700    10000158    Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Supplies (Shelf Stable)
+50000000      50180000     50182100    10000304    Food/Beverage  Bread/Bakery Products  Biscuits/Cookies               Biscuits/Cookies (Frozen)
+50000000      50180000     50182100    10000160    Food/Beverage  Bread/Bakery Products  Biscuits/Cookies               Biscuits/Cookies (Perishable)
+50000000      50180000     50182100    10000161    Food/Beverage  Bread/Bakery Products  Biscuits/Cookies               Biscuits/Cookies (Shelf Stable)
+50000000      50180000     50182100    10000596    Food/Beverage  Bread/Bakery Products  Biscuits/Cookies               Biscuits/Cookies Variety Packs
+50000000      50180000     50182100    10000305    Food/Beverage  Bread/Bakery Products  Biscuits/Cookies               Dried Breads (Frozen)
+50000000      50180000     50182100    10000166    Food/Beverage  Bread/Bakery Products  Biscuits/Cookies               Dried Breads (Shelf Stable)
+50000000      50180000     50181900    10000163    Food/Beverage  Bread/Bakery Products  Bread                          Bread (Frozen)
+50000000      50180000     50181900    10000164    Food/Beverage  Bread/Bakery Products  Bread                          Bread (Perishable)
+50000000      50180000     50181900    10000165    Food/Beverage  Bread/Bakery Products  Bread                          Bread (Shelf Stable)
 ```
 
 ## Data sources
