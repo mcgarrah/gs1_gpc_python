@@ -24,7 +24,7 @@ TAG_BRICK = 'brick'
 TAG_ATTRIB_TYPE = 'attType'
 TAG_ATTRIB_VALUE = 'attValue'
 
-# Adjust these attribute names if your GPC XML uses different ones
+# Adjust these attribute names if your GS1 GPC XML uses different ones
 ATTR_CODE = 'code'
 ATTR_TEXT = 'text'
 # TODO: Add DEFINITIONS to the database for TAGs that have it
@@ -272,14 +272,14 @@ def insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code
 
 def process_gpc_xml(xml_file_path, db_file_path):
     """
-    Parses the GPC XML file and inserts data into the SQLite database,
+    Parses the GS1 GPC XML file and inserts data into the SQLite database,
     following the Segment -> Family -> Class -> Brick hierarchy.
 
     Args:
-        xml_file_path (str): Path to the GPC XML file.
+        xml_file_path (str): Path to the GS1 GPC XML file.
         db_file_path (str): Path to the SQLite database file.
     """
-    logging.info("Starting GPC XML processing from: %s", xml_file_path)
+    logging.info("Starting GS1 GPC XML processing from: %s", xml_file_path)
     logging.info("Target database: %s", db_file_path)
 
     conn, cursor = None, None  # Initialize to ensure they exist for finally block
@@ -545,7 +545,7 @@ def process_gpc_xml(xml_file_path, db_file_path):
             counters['attribute_values_processed'], counters['attribute_values_inserted']
         )
         logging.info("----------------------")
-        logging.info("GPC XML processing finished.")
+        logging.info("GS1 GPC XML processing finished.")
 
 # pylint: enable=C0301,W0718
 
