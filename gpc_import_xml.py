@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+"""
+This module imports GS1 GPC XML data into an SQLite database.
+It parses the XML file, extracts relevant data, and inserts it into the database.
+The script is designed to handle the hierarchy of segments, families, classes, bricks,
+and attributes. It uses the ElementTree library for XML parsing and SQLite for database
+operations. It also includes error handling, logging, and command-line argument parsing.
+"""
 import sqlite3
 import xml.etree.ElementTree as ET
 import argparse
@@ -19,7 +27,9 @@ TAG_ATTRIB_VALUE = 'attValue'
 # Adjust these attribute names if your GPC XML uses different ones
 ATTR_CODE = 'code'
 ATTR_TEXT = 'text'
+# TODO: Add DEFINITIONS to the database for TAGs that have it
 ATTR_DEFINITION = 'definition'
+# TODO: Check for 'active' attribute in the XML before inserting into the database
 ATTR_ACTIVE = 'active'
 
 # Adjust if your XML root tag is different
@@ -29,7 +39,7 @@ EXPECTED_ROOT_TAG = 'schema'
 #DEFAULT_ARG_XML_FILE = './imports/gpc_data_full.xml'            # full feed
 DEFAULT_ARG_XML_FILE = './imports/gpc_data.xml'                 # only food/beverage
 #DEFAULT_ARG_XML_FILE = './imports/gpc_data_four_family.xml'     # only food/bev only four families
-#DEFAULT_ARG_XML_FILE = './imports/gpc_data_single_brick.xml'    # one segment "food/bev" one family and one brick
+#DEFAULT_ARG_XML_FILE = './imports/gpc_data_single_brick.xml'    # 1 segment 1 family 1 brick
 DEFAULT_ARG_DB_FILE = './instances/gpc_data_xml.db'
 
 
@@ -40,7 +50,7 @@ logging.basicConfig(level=logging.INFO,
                     handlers=[logging.StreamHandler(sys.stdout)])
 
 # --- Database Functions ---
-# setup_database(), insert_segment(), insert_family(), insert_class(), 
+# setup_database(), insert_segment(), insert_family(), insert_class(),
 # insert_brick(), insert_attribute_type(), and insert_attribute_value()
 # function are defined to handle the hierarchy.
 
@@ -54,14 +64,14 @@ def setup_database(db_file_path):
     Returns:
         tuple: (sqlite3.Connection, sqlite3.Cursor) or (None, None) on failure.
     """
-    logging.info(f"Attempting to connect to database: {db_file_path}")
+    logging.info("Attempting to connect to database: %s", db_file_path)
     try:
         # Check if directory exists, create if not
         db_dir = os.path.dirname(db_file_path)
         # Ensure db_dir is not empty (happens if db_path is just a filename)
         # and that the directory doesn't already exist.
         if db_dir and not os.path.exists(db_dir):
-            logging.info(f"Creating directory for database: {db_dir}")
+            logging.info("Creating directory for database: %s", db_dir)
             os.makedirs(db_dir)
 
         conn = sqlite3.connect(db_file_path)
@@ -123,11 +133,11 @@ def setup_database(db_file_path):
         logging.info("Tables checked/created successfully.")
         return conn, cursor
     except sqlite3.Error as e:
-        logging.error(f"Database error during setup: {e}")
+        logging.error("Database error during setup: %s", e)
         return None, None
     except OSError as e:
         # Log specific error creating directory if it happens
-        logging.error(f"OS error (potentially creating directory {db_dir}): {e}")
+        logging.error("OS error (potentially creating directory %s): %s", db_dir, e)
         return None, None
 
 
@@ -148,7 +158,7 @@ def insert_segment(cursor, segment_code, description):
         ''', (segment_code, description))
         return cursor.rowcount > 0  # Returns True if a row was inserted
     except sqlite3.Error as e:
-        logging.error(f"Error inserting segment {segment_code}: {e}")
+        logging.error("Error inserting segment %s: %s", segment_code, e)
         return False
 
 def insert_family(cursor, family_code, description, segment_code):
@@ -169,7 +179,7 @@ def insert_family(cursor, family_code, description, segment_code):
         ''', (family_code, description, segment_code))
         return cursor.rowcount > 0
     except sqlite3.Error as e:
-        logging.error(f"Error inserting family {family_code} (Segment {segment_code}): {e}")
+        logging.error("Error inserting family %s (Segment %s): %s", family_code, segment_code, e)
         return False
 
 def insert_class(cursor, class_code, description, family_code):
@@ -190,7 +200,7 @@ def insert_class(cursor, class_code, description, family_code):
         ''', (class_code, description, family_code))
         return cursor.rowcount > 0
     except sqlite3.Error as e:
-        logging.error(f"Error inserting class {class_code} (Family {family_code}): {e}")
+        logging.error("Error inserting class %s (Family %s): %s", class_code, family_code, e)
         return False
 
 def insert_brick(cursor, brick_code, description, class_code):
@@ -211,7 +221,7 @@ def insert_brick(cursor, brick_code, description, class_code):
         ''', (brick_code, description, class_code))
         return cursor.rowcount > 0
     except sqlite3.Error as e:
-        logging.error(f"Error inserting brick {brick_code} (Class {class_code}): {e}")
+        logging.error("Error inserting brick %s (Class %s): %s", brick_code, class_code, e)
         return False
 
 def insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
@@ -232,7 +242,7 @@ def insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
         ''', (att_type_code, att_type_text, brick_code))
         return cursor.rowcount > 0
     except sqlite3.Error as e:
-        logging.error(f"Error inserting attribute type {att_type_code}: {e}")
+        logging.error("Error inserting attribute type %s: %s", att_type_code, e)
         return False
 
 def insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code):
@@ -253,10 +263,12 @@ def insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code
         ''', (att_value_code, att_value_text, att_type_code))
         return cursor.rowcount > 0
     except sqlite3.Error as e:
-        logging.error(f"Error inserting attribute value {att_value_code}: {e}")
+        logging.error("Error inserting attribute value %s: %s", att_value_code, e)
         return False
 
 # --- XML Parsing and Processing Function ---
+
+# pylint: disable=C0301,W0718
 
 def process_gpc_xml(xml_file_path, db_file_path):
     """
@@ -267,8 +279,8 @@ def process_gpc_xml(xml_file_path, db_file_path):
         xml_file_path (str): Path to the GPC XML file.
         db_file_path (str): Path to the SQLite database file.
     """
-    logging.info(f"Starting GPC XML processing from: {xml_file_path}")
-    logging.info(f"Target database: {db_file_path}")
+    logging.info("Starting GPC XML processing from: %s", xml_file_path)
+    logging.info("Target database: %s", db_file_path)
 
     conn, cursor = None, None  # Initialize to ensure they exist for finally block
     counters = {
@@ -288,28 +300,31 @@ def process_gpc_xml(xml_file_path, db_file_path):
             return # Exit if DB setup fails
 
         # 2. Parse XML
-        logging.info(f"Parsing XML file: {xml_file_path}...")
+        logging.info("Parsing XML file: %s...", xml_file_path)
         try:
             # root = ET.parse(xml_file_path).getroot()
             tree = ET.parse(xml_file_path)
             root = tree.getroot()
-            logging.info(f"XML parsing successful.")
+            logging.info("XML parsing successful.")
 
             # Optional: Log root attributes
-            logging.info(f"Root element: {root.tag}")
-            logging.info(f"Root attributes: {root.attrib}")
+            logging.info("Root element: %s", root.tag)
+            logging.info("Root attributes: %s", root.attrib)
             # Check if the root element is EXPECTED_ROOT_TAG 'schema'
             if root.tag != EXPECTED_ROOT_TAG:
                 raise ValueError("Root element is not <{EXPECTED_ROOT_TAG}> as expected but instead found <{root.tag}>.")
 
         except ET.ParseError as e:
-            logging.error(f"XML parsing failed: {e}")
+            logging.error("XML parsing failed: %s", e)
             return # Exit if XML parsing fails
         except FileNotFoundError:
-            logging.error(f"XML file not found: {xml_file_path}")
+            logging.error("XML file not found: %s", xml_file_path)
             return # Exit if file not found
         except ValueError as e:
-            logging.error(f"XML file does not have the expected structure: {xml_file_path} - {e}")
+            logging.error(
+                "XML file does not have the expected structure: %s - %s",
+                xml_file_path, e
+            )
             return
 
         # 3. Iterate and Insert Data with corrected Hierarchy
@@ -321,15 +336,24 @@ def process_gpc_xml(xml_file_path, db_file_path):
         # Let's assume segments are direct children for now. Adjust if needed.
 
         # Find all Segment elements (adjust path if necessary, e.g., './/SegmentList/Segment')
-        logging.debug(f"Looking for elements matching tag '{TAG_SEGMENT}' under root <{root.tag}>")
+        logging.debug(
+            "Looking for elements matching tag '%s' under root <%s>",
+            TAG_SEGMENT, root.tag
+        )
         segment_elements = root.findall(TAG_SEGMENT)
         if not segment_elements:
             # Try searching deeper if not found as direct children
-            logging.debug(f"No direct children found matching '{TAG_SEGMENT}', searching anywhere with './/{TAG_SEGMENT}'")
+            logging.debug(
+                "No direct children found matching '%s', searching anywhere with './/{TAG_SEGMENT}'",
+                 TAG_SEGMENT
+         )
             segment_elements = root.findall(f".//{TAG_SEGMENT}")
         # Check if we found any segment elements in second conditional search above and report it
         if not segment_elements:
-            logging.warning(f"No segment elements ('{TAG_SEGMENT}') found in the XML file. Check XML structure and TAG_SEGMENT constant.")
+            logging.warning(
+                "No segment elements ('%s') found in the XML file. Check XML structure and TAG_SEGMENT constant.", 
+                TAG_SEGMENT
+            )
 
         # --- Start Segment Loop ---
         for segment_elem in segment_elements:
@@ -338,10 +362,10 @@ def process_gpc_xml(xml_file_path, db_file_path):
             segment_desc = segment_elem.get(ATTR_TEXT)
 
             if not segment_code or not segment_desc:
-                logging.warning(f"Skipping Segment element missing code ('{ATTR_CODE}') or description ('{ATTR_TEXT}').")
+                logging.warning("Skipping Segment element missing code ('%s') or description ('%s').", ATTR_CODE, ATTR_TEXT)
                 continue # Skip to the next segment
 
-            logging.debug(f"Processing Segment: {segment_code} - {segment_desc}")
+            logging.debug("Processing Segment: %s - %s", segment_code, segment_desc)
             if insert_segment(cursor, segment_code, segment_desc):
                 counters['segments_inserted'] += 1
 
@@ -360,11 +384,14 @@ def process_gpc_xml(xml_file_path, db_file_path):
                     # except Exception:
                     #      logging.warning(f"Skipping Family element missing code or description (under Segment {segment_code}): [Element details unavailable]")
                     # continue
-                    logging.warning(f"Skipping Family element missing code or description (under Segment {segment_code}).")
+                    logging.warning("Skipping Family element missing code or description (under Segment %s).", segment_code)
                     continue # Skip to the next family
 
 
-                logging.debug(f"  Processing Family: {family_code} - {family_desc} (under Segment {segment_code})")
+                logging.debug(
+                    "  Processing Family: %s - %s (under Segment %s)",
+                    family_code, family_desc, segment_code
+                )
                 if insert_family(cursor, family_code, family_desc, segment_code):
                     counters['families_inserted'] += 1
 
@@ -382,10 +409,10 @@ def process_gpc_xml(xml_file_path, db_file_path):
                         # except Exception:
                         #      logging.warning(f"Skipping Class element missing code or description (under Family {family_code}): [Element details unavailable]")
                         # continue
-                        logging.warning(f"Skipping Class element missing code or description (under Family {family_code}).")
+                        logging.warning("Skipping Class element missing code or description (under Family %s).", family_code)
                         continue # Skip to the next class
 
-                    logging.debug(f"    Processing Class: {class_code} - {class_desc} (under Family {family_code})")
+                    logging.debug("    Processing Class: %s - %s (under Family %s)", class_code, class_desc, family_code)
                     # Pass the correct family_code to insert_class
                     if insert_class(cursor, class_code, class_desc, family_code):
                         counters['classes_inserted'] += 1
@@ -404,10 +431,13 @@ def process_gpc_xml(xml_file_path, db_file_path):
                             # except Exception:
                             #     logging.warning(f"Skipping Brick element missing code or description (under Class {class_code}): [Element details unavailable]")
                             # continue
-                            logging.warning(f"Skipping Brick element missing code or description (under Class {class_code}).")
+                            logging.warning("Skipping Brick element missing code or description (under Class %s).", class_code)
                             continue # Skip to the next brick
 
-                        logging.debug(f"      Processing Brick: {brick_code} - {brick_desc} (under Class {class_code})")
+                        logging.debug(
+                            "      Processing Brick: %s - %s (under Class %s)",
+                            brick_code, brick_desc, class_code
+                        )
                         # Pass the correct class_code to insert_brick
                         if insert_brick(cursor, brick_code, brick_desc, class_code):
                             counters['bricks_inserted'] += 1
@@ -422,11 +452,15 @@ def process_gpc_xml(xml_file_path, db_file_path):
                             # if not att_type_code and att_type_text:
                             if not att_type_code or not att_type_text:
                                 logging.warning(
-                                    f"Skipping Attribute Type element missing code or description (under Brick {brick_code})."
+                                    "Skipping Attribute Type element missing code or description (under Brick %s).",
+                                    brick_code
                                 )
                                 continue  # Skip to the next attribute type
 
-                            logging.debug(f"        Processing Attribute Type: {att_type_code} - {att_type_text} (under Brick {brick_code})")
+                            logging.debug(
+                                "        Processing Attribute Type: %s - %s (under Brick %s)",
+                                att_type_code, att_type_text, brick_code
+                            )
                             # Pass the correct brick_code to insert_attribute_type
                             # Note: We assume that the attribute type code is unique across all bricks
                             if insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
@@ -441,11 +475,15 @@ def process_gpc_xml(xml_file_path, db_file_path):
                                 # if not att_value_code and att_value_text:
                                 if not att_value_code or not att_value_text:
                                     logging.warning(
-                                        f"Skipping Attribute Value element missing code or description (under Attribute Type {att_type_code})."
+                                        "Skipping Attribute Value element missing code or description (under Attribute Type %s.",
+                                        att_type_code
                                     )
                                     continue  # Skip to the next attribute value
 
-                                logging.debug(f"          Processing Attribute Value: {att_value_code} - {att_value_text} (under Attribute Type {att_type_code})")
+                                logging.debug(
+                                    "          Processing Attribute Value: %s - %s (under Attribute Type %s)",
+                                    att_value_code, att_value_text, att_type_code
+                                )
                                 # Pass the correct att_type_code to insert_attribute_value
                                 # Note: We assume that the attribute value code is unique across all attribute types
                                 # and that the attribute value code is unique across all attribute types
@@ -465,7 +503,10 @@ def process_gpc_xml(xml_file_path, db_file_path):
 
     except Exception as e:
         # Catch any unexpected errors during processing
-        logging.error(f"An unexpected error occurred during processing: {e}", exc_info=True) # Log stack trace
+        logging.error(
+            "An unexpected error occurred during processing: %s",
+            e, exc_info=True
+        ) # Log stack trace
         if conn:
             logging.warning("Rolling back database changes due to error.")
             conn.rollback()
@@ -479,14 +520,34 @@ def process_gpc_xml(xml_file_path, db_file_path):
 
         # 6. Final Report
         logging.info("--- Import Summary ---")
-        logging.info(f"Segments processed: {counters['segments_processed']}, Inserted (new): {counters['segments_inserted']}")
-        logging.info(f"Families processed: {counters['families_processed']}, Inserted (new): {counters['families_inserted']}")
-        logging.info(f"Classes processed: {counters['classes_processed']}, Inserted (new): {counters['classes_inserted']}")
-        logging.info(f"Bricks processed: {counters['bricks_processed']}, Inserted (new): {counters['bricks_inserted']}")
-        logging.info(f"Attribute Types processed: {counters['attribute_types_processed']}, Inserted (new): {counters['attribute_types_inserted']}")
-        logging.info(f"Attribute Values processed: {counters['attribute_values_processed']}, Inserted (new): {counters['attribute_values_inserted']}")
+        logging.info(
+            "Segments processed: %s, Inserted (new): %s",
+            counters['segments_processed'], counters['segments_inserted']
+        )
+        logging.info(
+            "Families processed: %s, Inserted (new): %s",
+            counters['families_processed'], counters['families_inserted']
+        )
+        logging.info(
+            "Classes processed: %s, Inserted (new): %s",
+            counters['classes_processed'], counters['classes_inserted']
+        )
+        logging.info(
+            "Bricks processed: %s, Inserted (new): %s",
+            counters['bricks_processed'], counters['bricks_inserted']
+        )
+        logging.info(
+            "Attribute Types processed: %s, Inserted (new): %s",
+            counters['attribute_types_processed'], counters['attribute_types_inserted']
+        )
+        logging.info(
+            "Attribute Values processed: %s, Inserted (new): %s",
+            counters['attribute_values_processed'], counters['attribute_values_inserted']
+        )
         logging.info("----------------------")
         logging.info("GPC XML processing finished.")
+
+# pylint: enable=C0301,W0718
 
 
 # --- Main Execution Block ---
@@ -545,6 +606,8 @@ def main():
         help="Suppress all logging except errors."
     )
 
+    # TODO: Add filter options for hierarchy levels. Example --filter-segment, --filter-family, etc.
+
     # Parse the command-line arguments
     args = parser.parse_args()
 
@@ -565,11 +628,11 @@ def main():
 
     # Record start time
     start_time = datetime.now()
-    logging.info(f"Script started at: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info("Script started at: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
 
     # Use the argument attributes (args.xml_file and args.db_file)
-    logging.info(f"Using XML file: {args.xml_file}")
-    logging.info(f"Using Database file: {args.db_file}")
+    logging.info("Using XML file: %s", args.xml_file)
+    logging.info("Using Database file: %s", args.db_file)
 
     # Run the main processing function
     process_gpc_xml(args.xml_file, args.db_file) # Pass the potentially defaulted values
@@ -577,8 +640,8 @@ def main():
     # Record end time and duration
     end_time = datetime.now()
     duration = end_time - start_time
-    logging.info(f"Script finished at: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    logging.info(f"Total execution time: {duration}")
+    logging.info("Script finished at: %s", end_time.strftime('%Y-%m-%d %H:%M:%S'))
+    logging.info("Total execution time: %s", duration)
 
 # This ensures the script runs only if executed directly, not when imported.
 if __name__ == "__main__":
