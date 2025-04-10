@@ -26,8 +26,8 @@ ATTR_ACTIVE = 'active'
 EXPECTED_ROOT_TAG = 'schema'
 
 # Default arguments
-DEFAULT_ARG_XML_FILE = './imports/gpc_data_full.xml'            # full feed
-#DEFAULT_ARG_XML_FILE = './imports/gpc_data.xml'                 # only food/beverage
+#DEFAULT_ARG_XML_FILE = './imports/gpc_data_full.xml'            # full feed
+DEFAULT_ARG_XML_FILE = './imports/gpc_data.xml'                 # only food/beverage
 #DEFAULT_ARG_XML_FILE = './imports/gpc_data_four_family.xml'     # only food/bev only four families
 #DEFAULT_ARG_XML_FILE = './imports/gpc_data_single_brick.xml'    # one segment "food/bev" one family and one brick
 DEFAULT_ARG_DB_FILE = './instances/gpc_data_xml.db'
@@ -40,7 +40,8 @@ logging.basicConfig(level=logging.INFO,
                     handlers=[logging.StreamHandler(sys.stdout)])
 
 # --- Database Functions ---
-# Below setup_database, insert_segment, insert_family, insert_class, and insert_brick
+# setup_database(), insert_segment(), insert_family(), insert_class(), 
+# insert_brick(), insert_attribute_type(), and insert_attribute_value()
 # function are defined to handle the hierarchy.
 
 def setup_database(db_file_path):
@@ -500,31 +501,60 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter # Shows defaults in help message
     )
 
+    # Add an XML file argument to specify the input GS1 GPC XML file
+    # This allows the user to specify a different XML file if needed.
+    # If not provided, it will use the default value defined above.
+    # The default value is set to './imports/gpc_data.xml'.
+    # This is a smaller subset of the full feed, which is useful for testing.
+    # The full feed is much larger and may take longer to process.
     parser.add_argument(
-        "--xml-file",  # Optional argument
-        # default="./imports/gpc_data_single.xml", # Default value
+        "--xml-file",
         default = DEFAULT_ARG_XML_FILE,
         help="Path to the input GS1 GPC XML file."
     )
 
+    # Add a database file argument to specify the output SQLite database file
+    # This allows the user to specify a different database file if needed.
+    # If not provided, it will use the default value defined above.
+    # The default value is set to './instances/gpc_data_xml.db'.
     parser.add_argument(
-        "--db-file",   # Optional argument
-        # default="./instances/gpc_data_xml.db",  # Default value
+        "--db-file",
         default = DEFAULT_ARG_DB_FILE,
         help="Path to the output SQLite database file (will be created if it doesn't exist)."
     )
 
+    # Add a verbose mode to enable detailed debug logging
+    # This is useful for debugging and understanding the flow of the script.
+    # It can be enabled by passing the -v or --verbose flag when running the script.
+    # This will set the logging level to DEBUG, allowing all debug messages to be shown.
+    # This is useful for development and troubleshooting.
     parser.add_argument(
         "-v", "--verbose",
-        default=True,
+        default=False,
         action="store_true",
         help="Enable detailed debug logging."
     )
 
+    # Add a quiet mode to suppress all logging except errors
+    # This is useful for running the script in a production environment
+    # where you only want to see critical errors.
+    parser.add_argument(
+        "-q", "--quiet",
+        default=False,
+        action="store_true",
+        help="Suppress all logging except errors."
+    )
+
+    # Parse the command-line arguments
     args = parser.parse_args()
 
     # --- Logger Level Configuration ---
-    log_level = logging.DEBUG if args.verbose else logging.INFO
+    if args.quiet:
+        log_level = logging.ERROR
+    elif args.verbose:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
     logging.getLogger().setLevel(log_level)
     # Ensure all handlers respect the new level
     for handler in logging.getLogger().handlers:
