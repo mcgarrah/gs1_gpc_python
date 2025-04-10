@@ -23,13 +23,13 @@ ATTR_DEFINITION = 'definition'
 ATTR_ACTIVE = 'active'
 
 # Adjust if your XML root tag is different
-EXPECTED_ROOT_TAG = 'schema'  
+EXPECTED_ROOT_TAG = 'schema'
 
 # Default arguments
 DEFAULT_ARG_XML_FILE = './imports/gpc_data_full.xml'            # full feed
-#DEFAULT_ARG_XML_FILE = './imports/gpc_data.xml'                # only food/beverage
-#DEFAULT_ARG_XML_FILE = './imports/gpc_data_four_family.xml'    # only food/bev only four families
-#DEFAULT_ARG_XML_FILE = './imports/gpc_data_single_brick.xml'   # only food/bev only one family and one brick
+#DEFAULT_ARG_XML_FILE = './imports/gpc_data.xml'                 # only food/beverage
+#DEFAULT_ARG_XML_FILE = './imports/gpc_data_four_family.xml'     # only food/bev only four families
+#DEFAULT_ARG_XML_FILE = './imports/gpc_data_single_brick.xml'    # one segment "food/bev" one family and one brick
 DEFAULT_ARG_DB_FILE = './instances/gpc_data_xml.db'
 
 
@@ -103,6 +103,22 @@ def setup_database(db_file_path):
             FOREIGN KEY (class_code) REFERENCES Classes (class_code)
         );
         ''')
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Attribute_Types (
+            att_type_code TEXT PRIMARY KEY,
+            att_type_text TEXT,
+            brick_code TEXT,
+            FOREIGN KEY (brick_code) REFERENCES Bricks (brick_code)
+        );
+        ''')
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Attribute_Values (
+            att_value_code TEXT PRIMARY KEY,
+            att_value_text TEXT,
+            att_type_code TEXT,
+            FOREIGN KEY (att_type_code) REFERENCES Attribute_Types (att_type_code)
+        );
+        ''')
         logging.info("Tables checked/created successfully.")
         return conn, cursor
     except sqlite3.Error as e:
@@ -162,6 +178,30 @@ def insert_brick(cursor, brick_code, description, class_code):
         logging.error(f"Error inserting brick {brick_code} (Class {class_code}): {e}")
         return False
 
+def insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
+    """Inserts an attribute type record."""
+    try:
+        cursor.execute('''
+        INSERT OR IGNORE INTO Attribute_Types (att_type_code, att_type_text, brick_code)
+        VALUES (?, ?, ?);
+        ''', (att_type_code, att_type_text, brick_code))
+        return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        logging.error(f"Error inserting attribute type {att_type_code}: {e}")
+        return False
+
+def insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code):
+    """Inserts an attribute value record."""
+    try:
+        cursor.execute('''
+        INSERT OR IGNORE INTO Attribute_Values (att_value_code, att_value_text, att_type_code)
+        VALUES (?, ?, ?);
+        ''', (att_value_code, att_value_text, att_type_code))
+        return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        logging.error(f"Error inserting attribute value {att_value_code}: {e}")
+        return False
+
 # --- XML Parsing and Processing Function ---
 
 def process_gpc_xml(xml_file_path, db_file_path):
@@ -182,6 +222,8 @@ def process_gpc_xml(xml_file_path, db_file_path):
         'families_processed': 0, 'families_inserted': 0,
         'classes_processed': 0, 'classes_inserted': 0,
         'bricks_processed': 0, 'bricks_inserted': 0,
+        'attribute_types_processed': 0, 'attribute_types_inserted': 0,
+        'attribute_values_processed': 0, 'attribute_values_inserted': 0,
     }
 
     try:
@@ -316,21 +358,41 @@ def process_gpc_xml(xml_file_path, db_file_path):
                         if insert_brick(cursor, brick_code, brick_desc, class_code):
                             counters['bricks_inserted'] += 1
 
-                        # --- Optional: Add Attribute parsing/insertion here if needed ---
+                        # --- Start Attribute Type Loop (Nested within Brick) ---
+                        # Find Attribute Type elements *directly under the current class*
+                        for att_type_elem in brick_elem.findall(TAG_ATTRIB_TYPE):
+                            counters['attribute_types_processed'] += 1
+                            att_type_code = att_type_elem.get(ATTR_CODE)
+                            att_type_text = att_type_elem.get(ATTR_TEXT)
 
-                        # TODO: Attribute parsing logic GOES HERE
-                        # Example:
-                        # for attr in brick_elem.attrib:
-                        #     attr_name = attr.get('name')
-                        #     attr_value = attr.get('value')
-                        #     if attr_name and attr_value:
-                        #         logging.debug(f"        Found attribute: {attr_name} - {attr_value}")
-                        #         # Insert into database or process as needed
-                        #         # Example: insert_attribute(cursor, brick_code, attr_name, attr_value)
-                        #         # insert_attribute(cursor, brick_code, attr_name, attr_value)
-                        #         # Note: Ensure to handle duplicates or conflicts as per your schema
-                        #         # Example: insert_attribute(cursor, brick_code, attr_name, attr_value)
+                            if not att_type_code and att_type_text:
+                                logging.warning(f"Skipping Attribute Type element missing code or description (under Brick {brick_code}).")
+                                continue # Skip to the next attribute type
 
+                            logging.debug(f"        Processing Attribute Type: {att_type_code} - {att_type_text} (under Brick {brick_code})")
+                            # Pass the correct brick_code to insert_attribute_type
+                            # Note: We assume that the attribute type code is unique across all bricks
+                            if insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
+                                counters['attribute_types_inserted'] += 1
+
+                            # --- Start Attribute Values Loop (Nested within Attribute Types) ---
+                            for att_value_elem in att_type_elem.findall(TAG_ATTRIB_VALUE):
+                                counters['attribute_values_processed'] += 1
+                                att_value_code = att_value_elem.get(ATTR_CODE)
+                                att_value_text = att_value_elem.get(ATTR_TEXT)
+
+                                if not att_value_code and att_value_text:
+                                    logging.warning(f"Skipping Attribute Value element missing code or description (under Attribute Type {att_type_code}).")
+                                    continue # Skip to the next attribute value
+
+                                logging.debug(f"          Processing Attribute Value: {att_value_code} - {att_value_text} (under Attribute Type {att_type_code})")
+                                # Pass the correct att_type_code to insert_attribute_value
+                                # Note: We assume that the attribute value code is unique across all attribute types
+                                # and that the attribute value code is unique across all attribute types
+                                if insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code):
+                                    counters['attribute_values_inserted'] += 1
+                            # --- End Attribute Values Loop ---
+                        # --- End Attribute Type Loop ---
                     # --- End Brick Loop ---
                 # --- End Class Loop ---
             # --- End Family Loop ---
@@ -361,6 +423,8 @@ def process_gpc_xml(xml_file_path, db_file_path):
         logging.info(f"Families processed: {counters['families_processed']}, Inserted (new): {counters['families_inserted']}")
         logging.info(f"Classes processed: {counters['classes_processed']}, Inserted (new): {counters['classes_inserted']}")
         logging.info(f"Bricks processed: {counters['bricks_processed']}, Inserted (new): {counters['bricks_inserted']}")
+        logging.info(f"Attribute Types processed: {counters['attribute_types_processed']}, Inserted (new): {counters['attribute_types_inserted']}")
+        logging.info(f"Attribute Values processed: {counters['attribute_values_processed']}, Inserted (new): {counters['attribute_values_inserted']}")
         logging.info("----------------------")
         logging.info("GPC XML processing finished.")
 

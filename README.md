@@ -172,6 +172,87 @@ segment_code  family_code  class_code  brick_code  segment_text   family_text   
 50000000      50200000     50202200    10000227    Food/Beverage  Beverages                       Alcoholic Beverages (Includes De-Alcoholised Variants)   Liqueurs
 ```
 
+``` console
+sqlite> .database
+main: /home/mcgarrah/github/gs1_gpc_import/instances/gpc_data_xml.db r/w
+sqlite> .table
+Attribute_Types   Bricks            Families
+Attribute_Values  Classes           Segments
+sqlite> .schema
+CREATE TABLE Segments (
+            segment_code TEXT PRIMARY KEY,
+            description TEXT
+        );
+CREATE TABLE Families (
+            family_code TEXT PRIMARY KEY,
+            description TEXT,
+            segment_code TEXT,
+            FOREIGN KEY (segment_code) REFERENCES Segments (segment_code)
+        );
+CREATE TABLE Classes (
+            class_code TEXT PRIMARY KEY,
+            description TEXT,
+            family_code TEXT,
+            FOREIGN KEY (family_code) REFERENCES Families (family_code)
+        );
+CREATE TABLE Bricks (
+            brick_code TEXT PRIMARY KEY,
+            description TEXT,
+            class_code TEXT,
+            FOREIGN KEY (class_code) REFERENCES Classes (class_code)
+        );
+CREATE TABLE Attribute_Types (
+            att_type_code TEXT PRIMARY KEY,
+            att_type_text TEXT,
+            brick_code TEXT,
+            FOREIGN KEY (brick_code) REFERENCES Bricks (brick_code)
+        );
+CREATE TABLE Attribute_Values (
+            att_value_code TEXT PRIMARY KEY,
+            att_value_text TEXT,
+            att_type_code TEXT,
+            FOREIGN KEY (att_type_code) REFERENCES Attribute_Types (att_type_code)
+        );
+
+sqlite> .header on
+sqlite> .mode column
+
+SELECT
+    Segments.segment_code AS segment_code, Families.family_code, Classes.class_code,
+    Bricks.brick_code, Attribute_Types.att_type_code, Attribute_Values.att_value_code,
+    Segments.description AS segment_text, Families.description AS family_text,
+    Classes.description AS class_text, Bricks.description AS brick_text,
+    Attribute_Types.att_type_text, Attribute_Values.att_value_text
+FROM Segments
+    JOIN Families ON Segments.segment_code = Families.segment_code
+    JOIN Classes ON Families.family_code = Classes.family_code
+    JOIN Bricks ON Classes.class_code = Bricks.class_code
+    JOIN Attribute_Types ON Bricks.brick_code = Attribute_Types.brick_code
+    JOIN Attribute_Values ON Attribute_Types.att_type_code = Attribute_Values.att_type_code
+WHERE Segments.segment_code = '50000000' AND Bricks.brick_code = '10000155'
+LIMIT 16;
+
+segment_code  family_code  class_code  brick_code  att_type_code  att_value_code  segment_text   family_text            class_text                     brick_text                     att_type_text                             att_value_text
+------------  -----------  ----------  ----------  -------------  --------------  -------------  ---------------------  -----------------------------  -----------------------------  ----------------------------------------  ----------------------
+50000000      50180000     50181700    10000155    20003041       30000252        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Method of Preparation                     BAKING
+50000000      50180000     50181700    10000155    20003041       30012526        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Method of Preparation                     BLENDING/MIXING
+50000000      50180000     50181700    10000155    20003041       30000393        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Method of Preparation                     BOILING
+50000000      50180000     50181700    10000155    20003041       30000721        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Method of Preparation                     COMBINATION OF METHODS
+50000000      50180000     50181700    10000155    20003041       30006847        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Method of Preparation                     FREEZING
+50000000      50180000     50181700    10000155    20003041       30001080        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Method of Preparation                     FRYING
+50000000      50180000     50181700    10000155    20003041       30001194        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Method of Preparation                     GRILLING
+50000000      50180000     50181700    10000155    20003041       30001584        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Method of Preparation                     MICROWAVING
+50000000      50180000     50181700    10000155    20003041       30017823        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Method of Preparation                     REFRIGERATION
+50000000      50180000     50181700    10000155    20003041       30002000        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Method of Preparation                     REHEATING
+50000000      50180000     50181700    10000155    20000175       30002534        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Suitability for Vegetarians/Vegans Claim  VEGANS
+50000000      50180000     50181700    10000155    20000175       30002541        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Suitability for Vegetarians/Vegans Claim  VEGETARIANS
+50000000      50180000     50181700    10000155    20000013       30000288        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Type of Baking/Cooking Mix                BATTER MIX
+50000000      50180000     50181700    10000155    20000013       30017171        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Type of Baking/Cooking Mix                BREAD DOUGH MIX
+50000000      50180000     50181700    10000155    20000013       30000508        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Type of Baking/Cooking Mix                CAKE MIX
+50000000      50180000     50181700    10000155    20000013       30002955        Food/Beverage  Bread/Bakery Products  Baking/Cooking Mixes/Supplies  Baking/Cooking Mixes (Frozen)  Type of Baking/Cooking Mix                COOKIE/BISCUIT MIX
+sqlite>.quit
+```
+
 ## Data sources
 
 ### Products
