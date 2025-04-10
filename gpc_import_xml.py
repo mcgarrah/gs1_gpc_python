@@ -8,7 +8,7 @@ from datetime import datetime
 
 # --- Configuration ---
 
-# Adjust these tag/attribute names if your GPC XML uses different ones
+# Adjust these tag/attribute names if your GS1 GPC XML file uses different ones
 TAG_SEGMENT = 'segment'
 TAG_FAMILY = 'family'
 TAG_CLASS = 'class'
@@ -48,7 +48,7 @@ def setup_database(db_file_path):
     Connects to the SQLite database and creates GPC tables if they don't exist.
 
     Args:
-        db_path (str): The path to the SQLite database file.
+        db_file_path (str): The path to the SQLite database file.
 
     Returns:
         tuple: (sqlite3.Connection, sqlite3.Cursor) or (None, None) on failure.
@@ -131,19 +131,36 @@ def setup_database(db_file_path):
 
 
 def insert_segment(cursor, segment_code, description):
-    """Inserts or ignores a segment record."""
+    """
+    Inserts or ignores a segment record.
+    Args:
+        cursor (sqlite3.Cursor): The database cursor.
+        segment_code (str): The segment code.
+        description (str): The segment description.
+    Returns:
+        bool: True if a row was inserted, False otherwise.
+    """
     try:
         cursor.execute('''
         INSERT OR IGNORE INTO Segments (segment_code, description)
         VALUES (?, ?);
         ''', (segment_code, description))
-        return cursor.rowcount > 0 # Returns True if a row was inserted
+        return cursor.rowcount > 0  # Returns True if a row was inserted
     except sqlite3.Error as e:
         logging.error(f"Error inserting segment {segment_code}: {e}")
         return False
 
 def insert_family(cursor, family_code, description, segment_code):
-    """Inserts or ignores a family record."""
+    """
+    Inserts or ignores a family record.
+    Args:
+        cursor (sqlite3.Cursor): The database cursor.
+        family_code (str): The family code.
+        description (str): The family description.
+        segment_code (str): The segment code.
+    Returns:
+        bool: True if a row was inserted, False otherwise.
+    """
     try:
         cursor.execute('''
         INSERT OR IGNORE INTO Families (family_code, description, segment_code)
@@ -155,7 +172,16 @@ def insert_family(cursor, family_code, description, segment_code):
         return False
 
 def insert_class(cursor, class_code, description, family_code):
-    """Inserts or ignores a class record."""
+    """
+    Inserts or ignores a class record.
+    Args:
+        cursor (sqlite3.Cursor): The database cursor.
+        class_code (str): The class code.
+        description (str): The class description.
+        family_code (str): The family code.
+    Returns:
+        bool: True if a row was inserted, False otherwise.
+    """
     try:
         cursor.execute('''
         INSERT OR IGNORE INTO Classes (class_code, description, family_code)
@@ -167,7 +193,16 @@ def insert_class(cursor, class_code, description, family_code):
         return False
 
 def insert_brick(cursor, brick_code, description, class_code):
-    """Inserts or ignores a brick record."""
+    """
+    Inserts or ignores a brick record.
+    Args:
+        cursor (sqlite3.Cursor): The database cursor.
+        brick_code (str): The brick code.
+        description (str): The brick description.
+        class_code (str): The class code.
+    Returns:
+        bool: True if a row was inserted, False otherwise.
+    """
     try:
         cursor.execute('''
         INSERT OR IGNORE INTO Bricks (brick_code, description, class_code)
@@ -179,7 +214,16 @@ def insert_brick(cursor, brick_code, description, class_code):
         return False
 
 def insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
-    """Inserts an attribute type record."""
+    """
+    Inserts an attribute type record.
+    Args:
+        cursor (sqlite3.Cursor): The database cursor.
+        att_type_code (str): The attribute type code.
+        att_type_text (str): The attribute type description.
+        brick_code (str): The brick code.
+    Returns:
+        bool: True if a row was inserted, False otherwise.
+    """
     try:
         cursor.execute('''
         INSERT OR IGNORE INTO Attribute_Types (att_type_code, att_type_text, brick_code)
@@ -191,7 +235,16 @@ def insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
         return False
 
 def insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code):
-    """Inserts an attribute value record."""
+    """
+    Inserts an attribute value record.
+    Args:
+        cursor (sqlite3.Cursor): The database cursor.
+        att_value_code (str): The attribute value code.
+        att_value_text (str): The attribute value description.
+        att_type_code (str): The attribute type code.
+    Returns:
+        bool: True if a row was inserted, False otherwise.
+    """
     try:
         cursor.execute('''
         INSERT OR IGNORE INTO Attribute_Values (att_value_code, att_value_text, att_type_code)
@@ -216,7 +269,7 @@ def process_gpc_xml(xml_file_path, db_file_path):
     logging.info(f"Starting GPC XML processing from: {xml_file_path}")
     logging.info(f"Target database: {db_file_path}")
 
-    conn, cursor = None, None # Initialize to ensure they exist for finally block
+    conn, cursor = None, None  # Initialize to ensure they exist for finally block
     counters = {
         'segments_processed': 0, 'segments_inserted': 0,
         'families_processed': 0, 'families_inserted': 0,
@@ -365,9 +418,12 @@ def process_gpc_xml(xml_file_path, db_file_path):
                             att_type_code = att_type_elem.get(ATTR_CODE)
                             att_type_text = att_type_elem.get(ATTR_TEXT)
 
-                            if not att_type_code and att_type_text:
-                                logging.warning(f"Skipping Attribute Type element missing code or description (under Brick {brick_code}).")
-                                continue # Skip to the next attribute type
+                            # if not att_type_code and att_type_text:
+                            if not att_type_code or not att_type_text:
+                                logging.warning(
+                                    f"Skipping Attribute Type element missing code or description (under Brick {brick_code})."
+                                )
+                                continue  # Skip to the next attribute type
 
                             logging.debug(f"        Processing Attribute Type: {att_type_code} - {att_type_text} (under Brick {brick_code})")
                             # Pass the correct brick_code to insert_attribute_type
@@ -381,9 +437,12 @@ def process_gpc_xml(xml_file_path, db_file_path):
                                 att_value_code = att_value_elem.get(ATTR_CODE)
                                 att_value_text = att_value_elem.get(ATTR_TEXT)
 
-                                if not att_value_code and att_value_text:
-                                    logging.warning(f"Skipping Attribute Value element missing code or description (under Attribute Type {att_type_code}).")
-                                    continue # Skip to the next attribute value
+                                # if not att_value_code and att_value_text:
+                                if not att_value_code or not att_value_text:
+                                    logging.warning(
+                                        f"Skipping Attribute Value element missing code or description (under Attribute Type {att_type_code})."
+                                    )
+                                    continue  # Skip to the next attribute value
 
                                 logging.debug(f"          Processing Attribute Value: {att_value_code} - {att_value_text} (under Attribute Type {att_type_code})")
                                 # Pass the correct att_type_code to insert_attribute_value
