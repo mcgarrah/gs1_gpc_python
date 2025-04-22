@@ -262,4 +262,4 @@ sqlite>.quit
   * [Python library and CLI tool to fetch information from GCP Browser](https://github.com/orsinium-labs/gpcc)
   * [A Python library and CLI for parsing and validating GTINs ("Global Trade Item Numbers"—also known as UPC/EAN/JAN/ISBN](https://github.com/enorganic/gtin)
   * [GS1_DigitalLink_Resolver_CE](https://github.com/gs1/GS1_DigitalLink_Resolver_CE)
-  * https://www.gs1us.org/tools/gs1-us-data-hub/gs1-us-apis
+  * [GS1 Tools](https://www.gs1us.org/tools/gs1-us-data-hub/gs1-us-apis)
