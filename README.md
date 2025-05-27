@@ -10,6 +10,14 @@ A tool for importing GS1 Global Product Classification (GPC) data into an SQLite
 - Export database tables to SQL file for backup or migration
 - Path handling relative to script location for reliable execution from any directory
 
+## GPCC Module Status
+
+The GPCC module used for downloading GPC data is currently available as a custom release on GitHub. There is an outstanding pull request to push these changes upstream, after which it will be available via standard pip installation. Until then, install it directly from the GitHub repository:
+
+```console
+pip install git+https://github.com/mcgarrah/gpcc.git@v1.0.1
+```
+
 ## Directory Structure
 
 - `/imports` - Directory for XML files (downloaded or manually placed)
