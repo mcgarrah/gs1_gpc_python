@@ -1,0 +1,7 @@
+include LICENSE README.md
+recursive-include examples *.py
+recursive-include gs1_gpc *.py
+recursive-include imports *.xml .gitkeep
+recursive-include exports *.sql .gitkeep
+recursive-include instances *.sqlite3 .gitkeep
+global-exclude *.py[cod] __pycache__ *.so

@@ -1,56 +1,76 @@
 # GS1 GPC Import
 
-A tool for importing GS1 Global Product Classification (GPC) data into an SQLite database.
+A tool for importing GS1 Global Product Classification (GPC) data into SQL databases.
 
 ## Features
 
-- Import GS1 GPC XML data into an SQLite database
+- Import GS1 GPC XML data into SQLite or PostgreSQL databases
 - Download the latest GPC data directly from GS1 API using the gpcc library
 - Automatically use the newest cached version if download is not available
 - Export database tables to SQL file for backup or migration
 - Path handling relative to script location for reliable execution from any directory
+- Command-line interface with Click
+- Pip installable package
 
-## GPCC Module Status
+## Installation
 
-The GPCC module used for downloading GPC data is currently available as a custom release on GitHub. There is an outstanding pull request to push these changes upstream, after which it will be available via standard pip installation. Until then, install it directly from the GitHub repository:
+### Important: GPCC Module Requirement
 
-```console
+**Before installing this package**, you must install the GPCC module from GitHub:
+
+```bash
 pip install git+https://github.com/mcgarrah/gpcc.git@v1.0.1
+```
+
+The GPCC module is currently available as a custom release on GitHub. There is an outstanding pull request to push these changes upstream, after which it will be available via standard pip installation.
+
+### Development Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/mcgarrah/gs1_gpc_import.git
+cd gs1_gpc_import
+
+# Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install the gpcc dependency from GitHub (required)
+pip install git+https://github.com/mcgarrah/gpcc.git@v1.0.1
+
+# Install the package in development mode
+pip install -e .
+```
+
+### Using requirements.txt
+
+For convenience, you can install all dependencies including gpcc from GitHub:
+
+```bash
+pip install -r requirements.txt
+pip install -e .
+```
+
+### PostgreSQL Support
+
+To use PostgreSQL instead of SQLite, install the PostgreSQL extra:
+
+```bash
+pip install -e ".[postgresql]"
 ```
 
 ## Directory Structure
 
-- `/imports` - Directory for XML files (downloaded or manually placed)
-- `/instances` - Directory for SQLite database files
-- `/exports` - Directory for SQL dump files
-
-## Setting up the environment
-
-### Virtual Environment
-
-```console
-sudo apt install python3-venv
-python3 -m venv .venv
-source .venv/bin/activate
-pip3 install -r requirements.txt
-```
-
-### SQLite Client
-
-```console
-sudo apt install sqlite3
-sqlite3 ./instances/gpc_data_xml.sqlite3
-> .help
-> .schema gpc_segments
-> .quit
-```
+- `/data/imports` - Directory for XML files (downloaded or manually placed)
+- `/data/instances` - Directory for SQLite database files
+- `/data/exports` - Directory for SQL dump files
 
 ## Usage
 
 ### Basic Import
 
-```console
-python3 gpc_import_xml.py
+```bash
+gpc import
 ```
 
 This will:
@@ -60,8 +80,8 @@ This will:
 
 ### Download Latest Data
 
-```console
-python3 gpc_import_xml.py --download
+```bash
+gpc import --download
 ```
 
 This will:
@@ -71,22 +91,22 @@ This will:
 
 ### Specify Language
 
-```console
-python3 gpc_import_xml.py --download --language fr
+```bash
+gpc import --download --language fr
 ```
 
 This will download and import the French version of the GPC data.
 
 ### Custom Files
 
-```console
-python3 gpc_import_xml.py --xml-file ./my_custom_file.xml --db-file ./my_database.sqlite3
+```bash
+gpc import --xml-file ./my_custom_file.xml --db-file ./my_database.sqlite3
 ```
 
 ### Export Database to SQL
 
-```console
-python3 gpc_import_xml.py --dump-sql
+```bash
+gpc import --dump-sql
 ```
 
 This will:
@@ -94,10 +114,22 @@ This will:
 2. Export all GPC tables to a SQL file in the exports directory
 3. The SQL file will follow the naming convention: `{language_code}-v{date}.sql`
 
+### Export Only (No Import)
+
+```bash
+gpc export-sql --db-file ./data/instances/gpc_data_xml.sqlite3
+```
+
+### PostgreSQL Support
+
+```bash
+gpc import --db-type postgresql --db-file "postgresql://user:password@localhost/dbname"
+```
+
 ### Other Options
 
-```console
-python3 gpc_import_xml.py --help
+```bash
+gpc import --help
 ```
 
 ## Database Schema
@@ -197,4 +229,13 @@ JOIN gpc_classes ON gpc_families.family_code = gpc_classes.family_code
 JOIN gpc_bricks ON gpc_classes.class_code = gpc_bricks.class_code
 WHERE gpc_segments.segment_code = '50000000' 
 LIMIT 16;
+```
+
+## Development
+
+### Running Tests
+
+```bash
+pip install -e ".[dev]"
+pytest gs1_gpc/tests/
 ```
