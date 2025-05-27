@@ -1,0 +1,12 @@
+# Include core requirements
+-r requirements.txt
+
+# Development dependencies
+pytest>=6.0
+pytest-cov>=2.10
+black>=22.3
+flake8>=3.9
+mypy>=0.910
+isort>=5.0
+bandit>=1.7
+pre-commit>=2.13

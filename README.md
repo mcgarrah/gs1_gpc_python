@@ -70,7 +70,7 @@ pip install -e ".[postgresql]"
 ### Basic Import
 
 ```bash
-gpc import
+gpc import-gpc
 ```
 
 This will:
@@ -81,7 +81,7 @@ This will:
 ### Download Latest Data
 
 ```bash
-gpc import --download
+gpc import-gpc --download
 ```
 
 This will:
@@ -92,7 +92,7 @@ This will:
 ### Specify Language
 
 ```bash
-gpc import --download --language fr
+gpc import-gpc --download --language fr
 ```
 
 This will download and import the French version of the GPC data.
@@ -100,13 +100,13 @@ This will download and import the French version of the GPC data.
 ### Custom Files
 
 ```bash
-gpc import --xml-file ./my_custom_file.xml --db-file ./my_database.sqlite3
+gpc import-gpc --xml-file ./my_custom_file.xml --db-file ./my_database.sqlite3
 ```
 
 ### Export Database to SQL
 
 ```bash
-gpc import --dump-sql
+gpc import-gpc --dump-sql
 ```
 
 This will:
@@ -123,13 +123,13 @@ gpc export-sql --db-file ./data/instances/gpc_data_xml.sqlite3
 ### PostgreSQL Support
 
 ```bash
-gpc import --db-type postgresql --db-file "postgresql://user:password@localhost/dbname"
+gpc import-gpc --db-type postgresql --db-file "postgresql://user:password@localhost/dbname"
 ```
 
 ### Other Options
 
 ```bash
-gpc import --help
+gpc import-gpc --help
 ```
 
 ## Database Schema
