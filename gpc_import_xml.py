@@ -54,7 +54,6 @@ DEFAULT_ARG_DB_FILE = './instances/gpc_data_xml.db'
 
 # GPC Download settings
 GPC_DOWNLOAD_DIR = './imports'
-GPC_DOWNLOAD_FILENAME = 'gpc_latest.xml'
 
 
 # --- Logging Setup ---
@@ -566,12 +565,14 @@ def process_gpc_xml(xml_file_path, db_file_path):
 
 # --- Database Dump Function ---
 
-def dump_database_to_sql(db_file_path):
+def dump_database_to_sql(db_file_path, language_code="en"):
     """
     Dumps all GPC tables from the SQLite database to a SQL file using iterdump().
+    Uses the naming convention: {language_code}-v{date}.sql
     
     Args:
         db_file_path (str): Path to the SQLite database file.
+        language_code (str): Language code to use in the filename.
         
     Returns:
         str: Path to the SQL dump file or None if failed.
@@ -579,7 +580,9 @@ def dump_database_to_sql(db_file_path):
     try:
         # Create SQL dump file path in the same directory as the database
         db_dir = os.path.dirname(db_file_path)
-        sql_file_path = os.path.join(db_dir, "gpc_dump.sql")
+        current_date = datetime.now().strftime("%Y%m%d")
+        sql_filename = f"{language_code}-v{current_date}.sql"
+        sql_file_path = os.path.join(db_dir, sql_filename)
         
         # Connect to the database
         conn = sqlite3.connect(db_file_path)
@@ -648,46 +651,57 @@ def dump_database_to_sql(db_file_path):
 
 # --- GPC Download Function ---
 
-async def _download_gpc_xml(output_path):
+async def _download_gpc_xml(output_dir, language_code='en'):
     """
     Downloads the latest GS1 GPC data in XML format using the gpcc library.
+    Uses the standard GPCC naming convention: {language_code}-v{version}.xml
     
     Args:
-        output_path: Path where the XML file will be saved
+        output_dir: Directory where the XML file will be saved
+        language_code: Language code to download (default: 'en')
         
     Returns:
-        bool: True if download was successful, False otherwise
+        str: Path to the downloaded file or None if failed
     """
     try:
-        # Get English language
-        lang = await get_language('en')
+        # Get language
+        lang = await get_language(language_code)
         if not lang:
-            logging.error("Could not find English language in GPC API")
-            return False
+            logging.error(f"Could not find language '{language_code}' in GPC API")
+            return None
             
-        # Get latest publication for English
+        # Get latest publication for the language
         publications = await get_publications(lang)
         if not publications:
-            logging.error("No publications found for English language")
-            return False
+            logging.error(f"No publications found for language '{language_code}'")
+            return None
             
         # Get the latest publication
         publication = publications[0]
-        logging.info(f"Found latest GPC publication: version {publication.version}")
+        version = publication.version
+        logging.info(f"Found latest GPC publication: version {version}")
+        
+        # Create filename using GPCC standard naming convention
+        filename = f"{language_code}-{version}.xml"
+        output_path = os.path.join(output_dir, filename)
         
         # Download the XML file
         with open(output_path, 'wb') as stream:
             await fetch_file(stream, publication, format='xml')
             
-        return True
+        return output_path
     except Exception as e:
         logging.error(f"Error during GPC download: {e}")
-        return False
+        return None
 
-def download_latest_gpc_xml():
+def download_latest_gpc_xml(language_code='en'):
     """
     Downloads the latest GS1 GPC data in XML format using the gpcc library.
     Falls back to the local cached version if download fails or gpcc is not available.
+    Uses the standard GPCC naming convention: {language_code}-{version}.xml
+    
+    Args:
+        language_code: Language code to download (default: 'en')
     
     Returns:
         str: Path to the XML file to use for import
@@ -697,18 +711,15 @@ def download_latest_gpc_xml():
         return DEFAULT_ARG_XML_FILE
     
     try:
-        logging.info("Attempting to download latest GPC data using gpcc...")
+        logging.info(f"Attempting to download latest GPC data for language '{language_code}' using gpcc...")
         
         # Ensure download directory exists
         os.makedirs(GPC_DOWNLOAD_DIR, exist_ok=True)
         
-        # Create full path for downloaded file
-        download_path = os.path.join(GPC_DOWNLOAD_DIR, GPC_DOWNLOAD_FILENAME)
-        
         # Run the async download function
-        success = asyncio.run(_download_gpc_xml(download_path))
+        download_path = asyncio.run(_download_gpc_xml(GPC_DOWNLOAD_DIR, language_code))
         
-        if success:
+        if download_path and os.path.exists(download_path):
             logging.info(f"Successfully downloaded latest GPC data to {download_path}")
             return download_path
         else:
@@ -786,6 +797,13 @@ def main():
         help="Download the latest GPC data before import"
     )
     
+    # Add option to specify language for download
+    parser.add_argument(
+        "--language",
+        default="en",
+        help="Language code for GPC data download (default: en)"
+    )
+    
     # Add option to dump database to SQL file
     parser.add_argument(
         "--dump-sql",
@@ -819,8 +837,8 @@ def main():
     # Determine which XML file to use
     xml_file_path = args.xml_file
     if args.download:
-        logging.info("Download flag set. Attempting to download latest GPC data...")
-        xml_file_path = download_latest_gpc_xml()
+        logging.info(f"Download flag set. Attempting to download latest GPC data in language '{args.language}'...")
+        xml_file_path = download_latest_gpc_xml(args.language)
     
     # Use the determined XML file and the database file from args
     logging.info("Using XML file: %s", xml_file_path)
@@ -832,7 +850,7 @@ def main():
     # Dump database to SQL if requested
     if args.dump_sql:
         logging.info("Dump SQL flag set. Dumping database to SQL file...")
-        sql_file_path = dump_database_to_sql(args.db_file)
+        sql_file_path = dump_database_to_sql(args.db_file, args.language)
         if sql_file_path:
             logging.info(f"Database dumped to SQL file: {sql_file_path}")
         else:
