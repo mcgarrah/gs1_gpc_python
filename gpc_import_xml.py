@@ -12,7 +12,17 @@ import argparse
 import sys
 import os
 import logging
+import asyncio
 from datetime import datetime
+from pathlib import Path
+
+try:
+    import gpcc
+    from gpcc._crawlers import fetch_file, get_language, get_publications
+    HAS_GPCC = True
+except ImportError:
+    logging.warning("gpcc library not found. Will use local cached GPC data.")
+    HAS_GPCC = False
 
 # --- Configuration ---
 
@@ -41,6 +51,10 @@ DEFAULT_ARG_XML_FILE = './imports/gpc_data.xml'                 # only food/beve
 #DEFAULT_ARG_XML_FILE = './imports/gpc_data_four_family.xml'     # only food/bev only four families
 #DEFAULT_ARG_XML_FILE = './imports/gpc_data_single_brick.xml'    # 1 segment 1 family 1 brick
 DEFAULT_ARG_DB_FILE = './instances/gpc_data_xml.db'
+
+# GPC Download settings
+GPC_DOWNLOAD_DIR = './imports'
+GPC_DOWNLOAD_FILENAME = 'gpc_latest.xml'
 
 
 # --- Logging Setup ---
@@ -85,49 +99,49 @@ def setup_database(db_file_path):
         # Create tables
         logging.info("Creating tables if they don't exist...")
         cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Segments (
+        CREATE TABLE IF NOT EXISTS gpc_segments (
             segment_code TEXT PRIMARY KEY,
             description TEXT
         );
         ''')
         cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Families (
+        CREATE TABLE IF NOT EXISTS gpc_families (
             family_code TEXT PRIMARY KEY,
             description TEXT,
             segment_code TEXT,
-            FOREIGN KEY (segment_code) REFERENCES Segments (segment_code)
+            FOREIGN KEY (segment_code) REFERENCES gpc_segments (segment_code)
         );
         ''')
         cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Classes (
+        CREATE TABLE IF NOT EXISTS gpc_classes (
             class_code TEXT PRIMARY KEY,
             description TEXT,
             family_code TEXT,
-            FOREIGN KEY (family_code) REFERENCES Families (family_code)
+            FOREIGN KEY (family_code) REFERENCES gpc_families (family_code)
         );
         ''')
         cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Bricks (
+        CREATE TABLE IF NOT EXISTS gpc_bricks (
             brick_code TEXT PRIMARY KEY,
             description TEXT,
             class_code TEXT,
-            FOREIGN KEY (class_code) REFERENCES Classes (class_code)
+            FOREIGN KEY (class_code) REFERENCES gpc_classes (class_code)
         );
         ''')
         cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Attribute_Types (
+        CREATE TABLE IF NOT EXISTS gpc_attribute_types (
             att_type_code TEXT PRIMARY KEY,
             att_type_text TEXT,
             brick_code TEXT,
-            FOREIGN KEY (brick_code) REFERENCES Bricks (brick_code)
+            FOREIGN KEY (brick_code) REFERENCES gpc_bricks (brick_code)
         );
         ''')
         cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Attribute_Values (
+        CREATE TABLE IF NOT EXISTS gpc_attribute_values (
             att_value_code TEXT PRIMARY KEY,
             att_value_text TEXT,
             att_type_code TEXT,
-            FOREIGN KEY (att_type_code) REFERENCES Attribute_Types (att_type_code)
+            FOREIGN KEY (att_type_code) REFERENCES gpc_attribute_types (att_type_code)
         );
         ''')
         logging.info("Tables checked/created successfully.")
@@ -153,7 +167,7 @@ def insert_segment(cursor, segment_code, description):
     """
     try:
         cursor.execute('''
-        INSERT OR IGNORE INTO Segments (segment_code, description)
+        INSERT OR IGNORE INTO gpc_segments (segment_code, description)
         VALUES (?, ?);
         ''', (segment_code, description))
         return cursor.rowcount > 0  # Returns True if a row was inserted
@@ -174,7 +188,7 @@ def insert_family(cursor, family_code, description, segment_code):
     """
     try:
         cursor.execute('''
-        INSERT OR IGNORE INTO Families (family_code, description, segment_code)
+        INSERT OR IGNORE INTO gpc_families (family_code, description, segment_code)
         VALUES (?, ?, ?);
         ''', (family_code, description, segment_code))
         return cursor.rowcount > 0
@@ -195,7 +209,7 @@ def insert_class(cursor, class_code, description, family_code):
     """
     try:
         cursor.execute('''
-        INSERT OR IGNORE INTO Classes (class_code, description, family_code)
+        INSERT OR IGNORE INTO gpc_classes (class_code, description, family_code)
         VALUES (?, ?, ?);
         ''', (class_code, description, family_code))
         return cursor.rowcount > 0
@@ -216,7 +230,7 @@ def insert_brick(cursor, brick_code, description, class_code):
     """
     try:
         cursor.execute('''
-        INSERT OR IGNORE INTO Bricks (brick_code, description, class_code)
+        INSERT OR IGNORE INTO gpc_bricks (brick_code, description, class_code)
         VALUES (?, ?, ?);
         ''', (brick_code, description, class_code))
         return cursor.rowcount > 0
@@ -237,7 +251,7 @@ def insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
     """
     try:
         cursor.execute('''
-        INSERT OR IGNORE INTO Attribute_Types (att_type_code, att_type_text, brick_code)
+        INSERT OR IGNORE INTO gpc_attribute_types (att_type_code, att_type_text, brick_code)
         VALUES (?, ?, ?);
         ''', (att_type_code, att_type_text, brick_code))
         return cursor.rowcount > 0
@@ -258,7 +272,7 @@ def insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code
     """
     try:
         cursor.execute('''
-        INSERT OR IGNORE INTO Attribute_Values (att_value_code, att_value_text, att_type_code)
+        INSERT OR IGNORE INTO gpc_attribute_values (att_value_code, att_value_text, att_type_code)
         VALUES (?, ?, ?);
         ''', (att_value_code, att_value_text, att_type_code))
         return cursor.rowcount > 0
@@ -550,6 +564,162 @@ def process_gpc_xml(xml_file_path, db_file_path):
 # pylint: enable=C0301,W0718
 
 
+# --- Database Dump Function ---
+
+def dump_database_to_sql(db_file_path):
+    """
+    Dumps all GPC tables from the SQLite database to a SQL file using iterdump().
+    
+    Args:
+        db_file_path (str): Path to the SQLite database file.
+        
+    Returns:
+        str: Path to the SQL dump file or None if failed.
+    """
+    try:
+        # Create SQL dump file path in the same directory as the database
+        db_dir = os.path.dirname(db_file_path)
+        sql_file_path = os.path.join(db_dir, "gpc_dump.sql")
+        
+        # Connect to the database
+        conn = sqlite3.connect(db_file_path)
+        
+        # Create a temporary in-memory database with only the gpc_ tables
+        temp_conn = sqlite3.connect(":memory:")
+        
+        # Get list of all gpc_ tables
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'gpc_%';")
+        tables = [table[0] for table in cursor.fetchall()]
+        
+        if not tables:
+            logging.warning("No GPC tables found in the database")
+            return None
+            
+        # Copy each gpc_ table to the temporary database
+        for table in tables:
+            # Get the CREATE statement for the table
+            cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table}';")
+            create_stmt = cursor.fetchone()[0]
+            
+            # Create the table in the temporary database
+            temp_conn.execute(create_stmt)
+            
+            # Copy the data
+            cursor.execute(f"SELECT * FROM {table};")
+            rows = cursor.fetchall()
+            
+            if rows:
+                # Get column names for the INSERT statement
+                cursor.execute(f"PRAGMA table_info({table});")
+                columns = [col[1] for col in cursor.fetchall()]
+                placeholders = ", ".join(["?" for _ in columns])
+                
+                # Insert the data into the temporary database
+                temp_conn.executemany(
+                    f"INSERT INTO {table} VALUES ({placeholders});", 
+                    rows
+                )
+        
+        temp_conn.commit()
+        
+        # Use iterdump() to generate the SQL dump
+        with open(sql_file_path, 'w') as f:
+            # Write header
+            f.write("-- GPC Database Dump\n")
+            f.write(f"-- Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"-- Source: {db_file_path}\n")
+            f.write("-- Tables: " + ", ".join(tables) + "\n\n")
+            
+            # Write the SQL dump
+            for line in temp_conn.iterdump():
+                f.write(line + "\n")
+        
+        # Close connections
+        temp_conn.close()
+        conn.close()
+        
+        logging.info(f"Database successfully dumped to {sql_file_path}")
+        return sql_file_path
+        
+    except Exception as e:
+        logging.error(f"Error dumping database to SQL: {e}")
+        return None
+
+# --- GPC Download Function ---
+
+async def _download_gpc_xml(output_path):
+    """
+    Downloads the latest GS1 GPC data in XML format using the gpcc library.
+    
+    Args:
+        output_path: Path where the XML file will be saved
+        
+    Returns:
+        bool: True if download was successful, False otherwise
+    """
+    try:
+        # Get English language
+        lang = await get_language('en')
+        if not lang:
+            logging.error("Could not find English language in GPC API")
+            return False
+            
+        # Get latest publication for English
+        publications = await get_publications(lang)
+        if not publications:
+            logging.error("No publications found for English language")
+            return False
+            
+        # Get the latest publication
+        publication = publications[0]
+        logging.info(f"Found latest GPC publication: version {publication.version}")
+        
+        # Download the XML file
+        with open(output_path, 'wb') as stream:
+            await fetch_file(stream, publication, format='xml')
+            
+        return True
+    except Exception as e:
+        logging.error(f"Error during GPC download: {e}")
+        return False
+
+def download_latest_gpc_xml():
+    """
+    Downloads the latest GS1 GPC data in XML format using the gpcc library.
+    Falls back to the local cached version if download fails or gpcc is not available.
+    
+    Returns:
+        str: Path to the XML file to use for import
+    """
+    if not HAS_GPCC:
+        logging.warning("gpcc library not available. Using local cached version.")
+        return DEFAULT_ARG_XML_FILE
+    
+    try:
+        logging.info("Attempting to download latest GPC data using gpcc...")
+        
+        # Ensure download directory exists
+        os.makedirs(GPC_DOWNLOAD_DIR, exist_ok=True)
+        
+        # Create full path for downloaded file
+        download_path = os.path.join(GPC_DOWNLOAD_DIR, GPC_DOWNLOAD_FILENAME)
+        
+        # Run the async download function
+        success = asyncio.run(_download_gpc_xml(download_path))
+        
+        if success:
+            logging.info(f"Successfully downloaded latest GPC data to {download_path}")
+            return download_path
+        else:
+            logging.warning("Failed to download latest GPC data. Using local cached version.")
+            return DEFAULT_ARG_XML_FILE
+            
+    except Exception as e:
+        logging.error(f"Error downloading GPC data: {e}")
+        logging.warning("Falling back to local cached version.")
+        return DEFAULT_ARG_XML_FILE
+
 # --- Main Execution Block ---
 
 def main():
@@ -608,6 +778,22 @@ def main():
 
     # TODO: Add filter options for hierarchy levels. Example --filter-segment, --filter-family, etc.
 
+    # Add option to download latest GPC data
+    parser.add_argument(
+        "--download",
+        default=False,
+        action="store_true",
+        help="Download the latest GPC data before import"
+    )
+    
+    # Add option to dump database to SQL file
+    parser.add_argument(
+        "--dump-sql",
+        default=False,
+        action="store_true",
+        help="Dump database tables to SQL file after import"
+    )
+
     # Parse the command-line arguments
     args = parser.parse_args()
 
@@ -629,13 +815,28 @@ def main():
     # Record start time
     start_time = datetime.now()
     logging.info("Script started at: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
-
-    # Use the argument attributes (args.xml_file and args.db_file)
-    logging.info("Using XML file: %s", args.xml_file)
+    
+    # Determine which XML file to use
+    xml_file_path = args.xml_file
+    if args.download:
+        logging.info("Download flag set. Attempting to download latest GPC data...")
+        xml_file_path = download_latest_gpc_xml()
+    
+    # Use the determined XML file and the database file from args
+    logging.info("Using XML file: %s", xml_file_path)
     logging.info("Using Database file: %s", args.db_file)
 
     # Run the main processing function
-    process_gpc_xml(args.xml_file, args.db_file) # Pass the potentially defaulted values
+    process_gpc_xml(xml_file_path, args.db_file)
+    
+    # Dump database to SQL if requested
+    if args.dump_sql:
+        logging.info("Dump SQL flag set. Dumping database to SQL file...")
+        sql_file_path = dump_database_to_sql(args.db_file)
+        if sql_file_path:
+            logging.info(f"Database dumped to SQL file: {sql_file_path}")
+        else:
+            logging.error("Failed to dump database to SQL file")
 
     # Record end time and duration
     end_time = datetime.now()
