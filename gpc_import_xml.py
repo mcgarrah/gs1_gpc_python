@@ -45,16 +45,18 @@ ATTR_ACTIVE = 'active'
 # Adjust if your XML root tag is different
 EXPECTED_ROOT_TAG = 'schema'
 
+# Get script directory for relative paths
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Default arguments
-#DEFAULT_ARG_XML_FILE = './imports/gpc_data_full.xml'            # full feed
-DEFAULT_ARG_XML_FILE = './imports/gpc_data.xml'                 # only food/beverage
-#DEFAULT_ARG_XML_FILE = './imports/gpc_data_four_family.xml'     # only food/bev only four families
-#DEFAULT_ARG_XML_FILE = './imports/gpc_data_single_brick.xml'    # 1 segment 1 family 1 brick
-DEFAULT_ARG_DB_FILE = './instances/gpc_data_xml.db'
+DEFAULT_ARG_DB_FILE = os.path.join(SCRIPT_DIR, 'instances', 'gpc_data_xml.sqlite3')
 
 # GPC Download settings
-GPC_DOWNLOAD_DIR = './imports'
+GPC_DOWNLOAD_DIR = os.path.join(SCRIPT_DIR, 'imports')
+DEFAULT_FALLBACK_XML_FILE = os.path.join(SCRIPT_DIR, 'imports', 'en-v20241202.xml')  # Fallback if no files found
 
+# SQL Export settings
+GPC_EXPORT_DIR = os.path.join(SCRIPT_DIR, 'exports')
 
 # --- Logging Setup ---
 # Keep your existing logging setup
@@ -563,6 +565,58 @@ def process_gpc_xml(xml_file_path, db_file_path):
 # pylint: enable=C0301,W0718
 
 
+# --- File Finding Function ---
+
+def find_latest_xml_file(directory=GPC_DOWNLOAD_DIR, language_code='en'):
+    """
+    Finds the latest GPC XML file in the specified directory based on version in filename.
+    Looks for files matching the pattern: {language_code}-v*.xml or {language_code}-*.xml
+    
+    Args:
+        directory (str): Directory to search for XML files
+        language_code (str): Language code to filter files (default: 'en')
+        
+    Returns:
+        str: Path to the latest XML file or None if no files found
+    """
+    try:
+        if not os.path.exists(directory):
+            logging.warning(f"Directory {directory} does not exist")
+            return None
+            
+        # Get all XML files in the directory
+        xml_files = []
+        for file in os.listdir(directory):
+            # Match both {language_code}-v*.xml and {language_code}-*.xml patterns
+            if file.endswith('.xml') and file.startswith(f"{language_code}-"):
+                xml_files.append(file)
+                
+        if not xml_files:
+            logging.warning(f"No XML files found for language '{language_code}' in {directory}")
+            return None
+            
+        # Sort files by version (extract version from filename)
+        def extract_version(filename):
+            # Try to extract version from {language_code}-v{version}.xml format
+            if '-v' in filename:
+                version = filename.split('-v')[1].split('.')[0]
+            # Try to extract version from {language_code}-{version}.xml format
+            else:
+                version = filename.split('-')[1].split('.')[0]
+            return version
+            
+        # Sort files by version in descending order (newest first)
+        xml_files.sort(key=extract_version, reverse=True)
+        
+        # Return the path to the latest file
+        latest_file = os.path.join(directory, xml_files[0])
+        logging.info(f"Found latest XML file: {latest_file}")
+        return latest_file
+        
+    except Exception as e:
+        logging.error(f"Error finding latest XML file: {e}")
+        return None
+
 # --- Database Dump Function ---
 
 def dump_database_to_sql(db_file_path, language_code="en"):
@@ -578,11 +632,13 @@ def dump_database_to_sql(db_file_path, language_code="en"):
         str: Path to the SQL dump file or None if failed.
     """
     try:
-        # Create SQL dump file path in the same directory as the database
-        db_dir = os.path.dirname(db_file_path)
+        # Ensure export directory exists
+        os.makedirs(GPC_EXPORT_DIR, exist_ok=True)
+        
+        # Create SQL dump file path in the exports directory
         current_date = datetime.now().strftime("%Y%m%d")
         sql_filename = f"{language_code}-v{current_date}.sql"
-        sql_file_path = os.path.join(db_dir, sql_filename)
+        sql_file_path = os.path.join(GPC_EXPORT_DIR, sql_filename)
         
         # Connect to the database
         conn = sqlite3.connect(db_file_path)
@@ -708,7 +764,13 @@ def download_latest_gpc_xml(language_code='en'):
     """
     if not HAS_GPCC:
         logging.warning("gpcc library not available. Using local cached version.")
-        return DEFAULT_ARG_XML_FILE
+        # Find the latest cached XML file
+        cached_file = find_latest_xml_file(GPC_DOWNLOAD_DIR, language_code)
+        if cached_file:
+            return cached_file
+        else:
+            logging.warning(f"No cached XML files found for language '{language_code}'. Using fallback file.")
+            return DEFAULT_FALLBACK_XML_FILE
     
     try:
         logging.info(f"Attempting to download latest GPC data for language '{language_code}' using gpcc...")
@@ -724,12 +786,24 @@ def download_latest_gpc_xml(language_code='en'):
             return download_path
         else:
             logging.warning("Failed to download latest GPC data. Using local cached version.")
-            return DEFAULT_ARG_XML_FILE
+            # Find the latest cached XML file
+            cached_file = find_latest_xml_file(GPC_DOWNLOAD_DIR, language_code)
+            if cached_file:
+                return cached_file
+            else:
+                logging.warning(f"No cached XML files found for language '{language_code}'. Using fallback file.")
+                return DEFAULT_FALLBACK_XML_FILE
             
     except Exception as e:
         logging.error(f"Error downloading GPC data: {e}")
         logging.warning("Falling back to local cached version.")
-        return DEFAULT_ARG_XML_FILE
+        # Find the latest cached XML file
+        cached_file = find_latest_xml_file(GPC_DOWNLOAD_DIR, language_code)
+        if cached_file:
+            return cached_file
+        else:
+            logging.warning(f"No cached XML files found for language '{language_code}'. Using fallback file.")
+            return DEFAULT_FALLBACK_XML_FILE
 
 # --- Main Execution Block ---
 
@@ -737,6 +811,9 @@ def main():
     """
     Main function to parse command-line arguments and initiate the import process.
     Uses default values for input and output files if not provided.
+    
+    All paths are relative to the script's location, ensuring the script can be run
+    from any directory while still accessing the correct files.
     """
     parser = argparse.ArgumentParser(
         description="Import GS1 GPC XML data into an SQLite database.",
@@ -745,20 +822,17 @@ def main():
 
     # Add an XML file argument to specify the input GS1 GPC XML file
     # This allows the user to specify a different XML file if needed.
-    # If not provided, it will use the default value defined above.
-    # The default value is set to './imports/gpc_data.xml'.
-    # This is a smaller subset of the full feed, which is useful for testing.
-    # The full feed is much larger and may take longer to process.
+    # If not provided, the script will try to find the latest cached XML file.
     parser.add_argument(
         "--xml-file",
-        default = DEFAULT_ARG_XML_FILE,
-        help="Path to the input GS1 GPC XML file."
+        default = DEFAULT_FALLBACK_XML_FILE,
+        help="Path to the input GS1 GPC XML file. If not specified, the latest cached file will be used."
     )
 
     # Add a database file argument to specify the output SQLite database file
     # This allows the user to specify a different database file if needed.
     # If not provided, it will use the default value defined above.
-    # The default value is set to './instances/gpc_data_xml.db'.
+    # The default value is set to './instances/gpc_data_xml.sqlite3'.
     parser.add_argument(
         "--db-file",
         default = DEFAULT_ARG_DB_FILE,
@@ -835,10 +909,21 @@ def main():
     logging.info("Script started at: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
     
     # Determine which XML file to use
-    xml_file_path = args.xml_file
-    if args.download:
+    if args.xml_file != DEFAULT_FALLBACK_XML_FILE:
+        # User explicitly specified an XML file
+        xml_file_path = args.xml_file
+        logging.info(f"Using user-specified XML file: {xml_file_path}")
+    elif args.download:
+        # User wants to download the latest data
         logging.info(f"Download flag set. Attempting to download latest GPC data in language '{args.language}'...")
         xml_file_path = download_latest_gpc_xml(args.language)
+    else:
+        # Find the latest cached XML file
+        logging.info(f"Looking for latest cached XML file for language '{args.language}'...")
+        xml_file_path = find_latest_xml_file(GPC_DOWNLOAD_DIR, args.language)
+        if not xml_file_path:
+            logging.warning(f"No cached XML files found. Using fallback file.")
+            xml_file_path = DEFAULT_FALLBACK_XML_FILE
     
     # Use the determined XML file and the database file from args
     logging.info("Using XML file: %s", xml_file_path)
@@ -850,6 +935,7 @@ def main():
     # Dump database to SQL if requested
     if args.dump_sql:
         logging.info("Dump SQL flag set. Dumping database to SQL file...")
+        logging.info(f"SQL export directory: {GPC_EXPORT_DIR}")
         sql_file_path = dump_database_to_sql(args.db_file, args.language)
         if sql_file_path:
             logging.info(f"Database dumped to SQL file: {sql_file_path}")
