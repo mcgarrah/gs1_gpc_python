@@ -38,6 +38,7 @@ Release Process
    - ``gs1_gpc/__init__.py``
    - ``pyproject.toml``
    - ``setup.cfg`` (if it exists)
+   - ``setup.py`` (if it exists)
 
 3. Update CHANGELOG.md with the changes in the new version:
 
@@ -61,7 +62,7 @@ Release Process
 
    .. code-block:: bash
 
-      git add gs1_gpc/__init__.py pyproject.toml CHANGELOG.md
+      git add gs1_gpc/__init__.py pyproject.toml setup.py setup.cfg CHANGELOG.md
       git commit -m "Bump version to X.Y.Z"
 
 5. Create and push a tag using GitHub CLI:

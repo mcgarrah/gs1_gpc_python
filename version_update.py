@@ -6,6 +6,7 @@ This script updates the version number in all necessary files:
 - gs1_gpc/__init__.py
 - pyproject.toml
 - setup.cfg (if exists)
+- setup.py (if exists)
 
 Usage:
     python version_update.py 0.1.1
@@ -34,6 +35,10 @@ def update_version(new_version):
     if os.path.exists('setup.cfg'):
         update_file('setup.cfg', r'version = \d+\.\d+\.\d+', f'version = {new_version}')
 
+    # Update setup.py if it exists
+    if os.path.exists('setup.py'):
+        update_file('setup.py', r'version="[^"]+"', f'version="{new_version}"')
+
     print(f"Version updated to {new_version} in all files.")
     return True
 
@@ -48,6 +53,10 @@ def update_file(file_path, pattern, replacement):
         content = file.read()
 
     updated_content = re.sub(pattern, replacement, content)
+
+    if content == updated_content:
+        print(f"No version pattern found in {file_path}")
+        return False
 
     with open(file_path, 'w', encoding="utf-8") as file:
         file.write(updated_content)
