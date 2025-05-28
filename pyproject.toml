@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gs1-gpc"
-version = "0.1.0"
+version = "0.1.1"
 description = "A tool for importing GS1 Global Product Classification (GPC) data into SQL databases"
 readme = "README.md"
 authors = [
@@ -51,6 +51,7 @@ docs = [
 [project.urls]
 Homepage = "https://github.com/mcgarrah/gs1_gpc_import"
 "Bug Tracker" = "https://github.com/mcgarrah/gs1_gpc_import/issues"
+Repository = "https://github.com/mcgarrah/gs1_gpc_import"
 Documentation = "https://gs1-gpc.readthedocs.io/"
 
 [tool.setuptools]
