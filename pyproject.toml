@@ -51,6 +51,7 @@ docs = [
 [project.urls]
 Homepage = "https://github.com/mcgarrah/gs1_gpc_import"
 "Bug Tracker" = "https://github.com/mcgarrah/gs1_gpc_import/issues"
+Repository = "https://github.com/mcgarrah/gs1_gpc_import"
 Documentation = "https://gs1-gpc.readthedocs.io/"
 
 [tool.setuptools]
