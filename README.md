@@ -19,8 +19,8 @@ A tool for importing GS1 Global Product Classification (GPC) data into SQL datab
 
 ```bash
 # Clone the repository
-git clone https://github.com/mcgarrah/gs1_gpc_import.git
-cd gs1_gpc_import
+git clone https://github.com/mcgarrah/gs1_gpc_python.git
+cd gs1_gpc_python
 
 # Create and activate a virtual environment
 python -m venv .venv

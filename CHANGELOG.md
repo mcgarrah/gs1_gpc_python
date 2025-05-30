@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed documentation for Github repo name `gs1_gpc_import` rename to `gs1_gpc_python`
+
 ## [0.1.4] - Unreleased
 
 ### Added
