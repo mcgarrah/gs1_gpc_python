@@ -14,15 +14,6 @@ A tool for importing GS1 Global Product Classification (GPC) data into SQL datab
 
 ## Installation
 
-### Important: GPCC Module Requirement
-
-**Before installing this package**, you must install the GPCC module from GitHub:
-
-```bash
-pip install git+https://github.com/mcgarrah/gpcc.git@v1.0.1
-```
-
-The GPCC module is currently available as a custom release on GitHub. There is an outstanding pull request to push these changes upstream, after which it will be available via standard pip installation.
 
 ### Development Installation
 
@@ -35,8 +26,8 @@ cd gs1_gpc_import
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install the gpcc dependency from GitHub (required)
-pip install git+https://github.com/mcgarrah/gpcc.git@v1.0.1
+# Install dependencies
+pip install -r requirements.txt
 
 # Install the package in development mode
 pip install -e .
@@ -74,6 +65,7 @@ gpc import-gpc
 ```
 
 This will:
+
 1. Look for the latest cached XML file in the imports directory
 2. If none found, use the fallback file
 3. Import the data into the default SQLite database
@@ -85,6 +77,7 @@ gpc import-gpc --download
 ```
 
 This will:
+
 1. Download the latest GPC data from the GS1 API
 2. Save it to the imports directory with standard naming convention: `{language_code}-{version}.xml`
 3. Import the data into the default SQLite database
@@ -92,10 +85,10 @@ This will:
 ### Specify Language
 
 ```bash
-gpc import-gpc --download --language fr
+gpc import-gpc --download --language nl
 ```
 
-This will download and import the French version of the GPC data.
+This will download and import the Dutch version of the GPC data.
 
 ### Custom Files
 
@@ -110,6 +103,7 @@ gpc import-gpc --dump-sql
 ```
 
 This will:
+
 1. Import data as usual
 2. Export all GPC tables to a SQL file in the exports directory
 3. The SQL file will follow the naming convention: `{language_code}-v{date}.sql`
