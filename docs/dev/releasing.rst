@@ -1,7 +1,7 @@
 Releasing
 =========
 
-This document provides information about releasing new versions of the GS1 GPC Import project.
+This document provides information about releasing new versions of the GS1 GPC project.
 
 Version Numbering
 ---------------
@@ -81,7 +81,7 @@ Release Process
    .. code-block:: bash
 
       # Create a release from the tag
-      gh release create vX.Y.Z --title "GS1 GPC Import X.Y.Z" --notes-file RELEASE_NOTES.md
+      gh release create vX.Y.Z --title "GS1 GPC X.Y.Z" --notes-file RELEASE_NOTES.md
       
    Or for a simpler release:
    

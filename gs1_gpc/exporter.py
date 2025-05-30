@@ -1,5 +1,5 @@
 """
-SQL export functionality for GS1 GPC Import.
+SQL export functionality for GS1 GPC.
 
 This module provides functions for exporting database tables to SQL files.
 """

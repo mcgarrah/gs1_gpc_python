@@ -1,5 +1,5 @@
 """
-XML parsing functionality for GS1 GPC Import.
+XML parsing functionality for GS1 GPC.
 
 This module provides functions for parsing GS1 GPC XML data and inserting it into a database.
 """

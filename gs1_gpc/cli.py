@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Command line interface for GS1 GPC Import.
+Command line interface for GS1 GPC.
 """
 
 import os
@@ -26,7 +26,7 @@ DEFAULT_FALLBACK_XML_FILE = os.path.join(GPC_DOWNLOAD_DIR, 'en-v20241202.xml')
 @click.group()
 @click.version_option(version=__version__)
 def cli():
-    """GS1 GPC Import Command Line Tool"""
+    """GS1 GPC Command Line Tool"""
     pass
 
 

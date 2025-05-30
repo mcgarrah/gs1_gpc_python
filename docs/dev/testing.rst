@@ -1,7 +1,7 @@
 Testing
 =======
 
-This document provides information about testing the GS1 GPC Import project.
+This document provides information about testing the GS1 GPC project.
 
 Running Tests
 -----------

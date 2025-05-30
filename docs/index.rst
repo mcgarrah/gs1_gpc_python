@@ -1,5 +1,5 @@
-GS1 GPC Import
-=============
+GS1 GPC 
+=======
 
 A tool for importing GS1 Global Product Classification (GPC) data into SQL databases.
 

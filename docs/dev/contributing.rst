@@ -1,7 +1,7 @@
 Contributing
 ===========
 
-We welcome contributions to the GS1 GPC Import project! This document provides guidelines for contributing to the project.
+We welcome contributions to the GS1 GPC project! This document provides guidelines for contributing to the project.
 
 Setting Up Development Environment
 -------------------------------
