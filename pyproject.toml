@@ -24,6 +24,7 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
     "click>=8.0.0",
+    "gpcc>=1.1.0",
 ]
 
 [project.scripts]

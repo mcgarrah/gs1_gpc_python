@@ -1,2 +1,2 @@
 click>=8.0.0
-git+https://github.com/mcgarrah/gpcc.git@v1.0.1
+gpcc>=1.1.0

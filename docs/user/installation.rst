@@ -5,18 +5,12 @@ Requirements
 -----------
 
 * Python 3.8 or higher
-* GPCC library (custom GitHub version)
+* GPCC 1.1.0 or higher library
 
 Installing from PyPI
 -------------------
 
-Before installing this package, you must install the GPCC module from GitHub:
-
-.. code-block:: bash
-
-   pip install git+https://github.com/mcgarrah/gpcc.git@v1.0.1
-
-Then install the package:
+Install the package:
 
 .. code-block:: bash
 

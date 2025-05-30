@@ -24,19 +24,7 @@ Key Features
 Installation
 -----------
 
-Before installing this package, you must install the GPCC module from GitHub:
-
-.. code-block:: bash
-
-   pip install git+https://github.com/mcgarrah/gpcc.git@v1.0.1
-
-Then install the package:
-
-.. code-block:: bash
-
-   pip install gs1-gpc
-
-Or install from source:
+Install from source:
 
 .. code-block:: bash
 
