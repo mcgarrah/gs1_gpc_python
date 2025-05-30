@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath('..'))
 import gs1_gpc
 
 # -- Project information -----------------------------------------------------
-project = 'GS1 GPC Import'
+project = 'GS1 GPC'
 copyright = f'{datetime.datetime.now().year}, Michael McGarrah'
 author = 'Michael McGarrah'
 

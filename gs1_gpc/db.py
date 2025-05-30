@@ -1,5 +1,5 @@
 """
-Database operations for GS1 GPC Import.
+Database operations for GS1 GPC.
 
 This module provides functions for setting up and interacting with the database,
 including creating tables and inserting data.

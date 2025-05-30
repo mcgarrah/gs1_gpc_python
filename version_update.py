@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Version Update Script for GS1 GPC Import
+Version Update Script for GS1 GPC
 
 This script updates the version number in all necessary files:
 - gs1_gpc/__init__.py

@@ -4,7 +4,7 @@ Advanced Usage
 PostgreSQL Support
 ----------------
 
-The GS1 GPC Import tool supports both SQLite and PostgreSQL databases. To use PostgreSQL, you need to install the PostgreSQL extra:
+The GS1 GPC tool supports both SQLite and PostgreSQL databases. To use PostgreSQL, you need to install the PostgreSQL extra:
 
 .. code-block:: bash
 
@@ -66,7 +66,7 @@ You can control the logging level with the ``--verbose`` and ``--quiet`` options
 Programmatic Usage
 ----------------
 
-You can use the GS1 GPC Import tool as a Python library in your own code:
+You can use the GS1 GPC tool as a Python library in your own code:
 
 .. code-block:: python
 

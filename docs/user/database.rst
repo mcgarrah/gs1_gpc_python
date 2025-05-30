@@ -1,7 +1,7 @@
 Database Schema
 ==============
 
-The GS1 GPC Import tool creates a database with the following schema. All tables are prefixed with "gpc_" to avoid conflicts with other tables in the database.
+The GS1 GPC tool creates a database with the following schema. All tables are prefixed with "gpc_" to avoid conflicts with other tables in the database.
 
 Tables
 -----
