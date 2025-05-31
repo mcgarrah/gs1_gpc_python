@@ -1,19 +1,48 @@
 Releasing
 =========
 
-This document provides information about releasing new versions of the GS1 GPC project.
+This document describes the process for releasing new versions of the GS1 GPC Python Client.
+
+Prerequisites
+------------
+
+1. Install the GitHub CLI (``gh``):
+
+   .. code-block:: bash
+
+      # For macOS
+      brew install gh
+      
+      # For Linux
+      sudo apt install gh  # Debian/Ubuntu
+      sudo dnf install gh  # Fedora
+      
+      # For Windows
+      winget install --id GitHub.cli
+
+2. Authenticate with GitHub:
+
+   .. code-block:: bash
+
+      gh auth login
+
+3. Install build and twine:
+
+   .. code-block:: bash
+
+      pip install build twine
 
 Version Numbering
 ---------------
 
-We use semantic versioning (SemVer) for version numbers:
+This project follows `Semantic Versioning <https://semver.org/>`_:
 
 - **MAJOR** version for incompatible API changes
-- **MINOR** version for new functionality in a backward-compatible manner
-- **PATCH** version for backward-compatible bug fixes
+- **MINOR** version for adding functionality in a backwards compatible manner
+- **PATCH** version for backwards compatible bug fixes
 
 Release Process
-------------
+-------------
 
 1. Ensure all tests pass and the code is ready for release:
 
@@ -26,11 +55,13 @@ Release Process
       flake8 gs1_gpc
       black --check gs1_gpc
 
-2. Update the version using the version_update.py script:
+2. Update Version Numbers
+^^^^^^^^^^^^^^^^^^^^^^^
+
+   Use the version update script to update the version number in all necessary files:
 
    .. code-block:: bash
 
-      # Update version to X.Y.Z
       python version_update.py X.Y.Z
 
    This will update the version in:
@@ -40,7 +71,10 @@ Release Process
    - ``setup.cfg`` (if it exists)
    - ``setup.py`` (if it exists)
 
-3. Update CHANGELOG.md with the changes in the new version:
+3. Update Changelog
+^^^^^^^^^^^^^^^^
+
+   Update the ``CHANGELOG.md`` file with the changes in the new version:
 
    .. code-block:: markdown
 
@@ -58,50 +92,65 @@ Release Process
       - Bug fix 1
       - Bug fix 2
 
-4. Commit the changes:
+4. Create a Pull Request (if working on a feature branch)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
    .. code-block:: bash
 
-      git add gs1_gpc/__init__.py pyproject.toml setup.py setup.cfg CHANGELOG.md
-      git commit -m "Bump version to X.Y.Z"
+      # Ensure you're on your feature branch with latest changes
+      git checkout feature-branch
+      git pull origin feature-branch
 
-5. Create and push a tag using GitHub CLI:
+      # Commit version changes
+      git add .
+      git commit -m "Bump version to vX.Y.Z"
+      git push origin feature-branch
+
+      # Create a pull request
+      gh pr create --base main --head feature-branch --title "Release vX.Y.Z" --body "Release version X.Y.Z with the following changes:
+      - Feature 1
+      - Feature 2
+      - Bug fix 1"
+
+5. Review and Merge the Pull Request
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
    .. code-block:: bash
+
+      # List open pull requests
+      gh pr list
+
+      # View the pull request
+      gh pr view [PR_NUMBER]
+
+      # Merge the pull request
+      gh pr merge [PR_NUMBER] --merge
+
+6. Create and Push a Tag
+^^^^^^^^^^^^^^^^^^^^
+
+   .. code-block:: bash
+
+      # Switch to main branch
+      git checkout main
+      git pull origin main
 
       # Create an annotated tag
       git tag -a vX.Y.Z -m "Version X.Y.Z"
       
-      # Push the changes and tag
-      git push origin main
+      # Push the tag
       git push origin vX.Y.Z
 
-6. Create a GitHub release using GitHub CLI:
+7. Automated GitHub Release and PyPI Publishing
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   .. code-block:: bash
+   Once you push a tag in the format `vX.Y.Z`, the GitHub Actions workflow defined in `.github/workflows/publish-to-pypi.yml` will automatically:
 
-      # Create a release from the tag
-      gh release create vX.Y.Z --title "GS1 GPC X.Y.Z" --notes-file RELEASE_NOTES.md
-      
-   Or for a simpler release:
-   
-   .. code-block:: bash
+   1. Build the package
+   2. Create a GitHub release with the built package files
+   3. Upload the package to PyPI
 
-      # Create a release with notes from the tag message
-      gh release create vX.Y.Z --generate-notes
-
-7. Build and publish the package to PyPI:
-
-   .. code-block:: bash
-
-      # Install build tools if not already installed
-      pip install build twine
-      
-      # Build the package
-      python -m build
-      
-      # Upload to PyPI
-      python -m twine upload dist/*
+   You can monitor the workflow progress in the "Actions" tab of your GitHub repository.
 
 Release Checklist
 --------------
@@ -114,53 +163,20 @@ Before releasing, ensure:
 - Version numbers are consistent
 - All changes are committed and pushed
 
-Automating Releases with GitHub Actions
-------------------------------------
+Post-Release
+-----------
 
-You can also set up GitHub Actions to automate the release process. Create a workflow file at ``.github/workflows/release.yml`` with the following content:
+After releasing, update the version number to the next development version:
 
-.. code-block:: yaml
+.. code-block:: bash
 
-   name: Release
+   python version_update.py X.Y.(Z+1)-dev
 
-   on:
-     push:
-       tags:
-         - 'v*.*.*'
+Commit this change:
 
-   jobs:
-     release:
-       runs-on: ubuntu-latest
-       steps:
-         - uses: actions/checkout@v3
-         
-         - name: Set up Python
-           uses: actions/setup-python@v4
-           with:
-             python-version: '3.12'
-             
-         - name: Install dependencies
-           run: |
-             python -m pip install --upgrade pip
-             pip install build twine
-             
-         - name: Build package
-           run: python -m build
-           
-         - name: Create GitHub Release
-           uses: softprops/action-gh-release@v1
-           with:
-             generate_release_notes: true
-             files: dist/*
-             
-         - name: Publish to PyPI
-           env:
-             TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-             TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-           run: twine upload dist/*
+.. code-block:: bash
 
-With this workflow, when you push a tag in the format `vX.Y.Z`, GitHub Actions will automatically:
-
-1. Build the package
-2. Create a GitHub release
-3. Upload the package to PyPI
+   git checkout main  # or your development branch
+   git add .
+   git commit -m "Bump version to X.Y.(Z+1)-dev"
+   git push origin main  # or your development branch
