@@ -61,7 +61,6 @@ Contents
    :maxdepth: 2
    :caption: API Reference
 
-   api/cli
    api/db
    api/parser
    api/downloader

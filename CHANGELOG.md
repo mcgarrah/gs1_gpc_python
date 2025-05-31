@@ -10,7 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed documentation for Github repo name `gs1_gpc_import` rename to `gs1_gpc_python`
 
-## [0.1.4] - Unreleased
+### Removed
+- Removed empty CLI module from API reference documentation
+
+## [0.1.4] - 2025-05-30
 
 ### Added
 - Added requirements-postgresql.txt for PostgreSQL dependencies
