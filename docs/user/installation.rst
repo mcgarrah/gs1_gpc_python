@@ -14,7 +14,7 @@ Install the package:
 
 .. code-block:: bash
 
-   pip install gs1-gpc
+   pip install gs1_gpc
 
 Installing from Source
 --------------------
@@ -41,7 +41,7 @@ To use PostgreSQL instead of SQLite, install the PostgreSQL extra:
 
 .. code-block:: bash
 
-   pip install gs1-gpc[postgresql]
+   pip install gs1_gpc[postgresql]
 
 Or when installing from source:
 

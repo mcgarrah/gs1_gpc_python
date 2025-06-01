@@ -8,7 +8,7 @@ The GS1 GPC tool supports both SQLite and PostgreSQL databases. To use PostgreSQ
 
 .. code-block:: bash
 
-   pip install gs1-gpc[postgresql]
+   pip install gs1_gpc[postgresql]
 
 Then you can use the ``--db-type postgresql`` option with the ``gpc import-gpc`` command:
 
