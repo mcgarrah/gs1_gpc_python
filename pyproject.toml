@@ -3,8 +3,8 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gs1-gpc"
-version = "0.1.4"
+name = "gs1_gpc"
+version = "0.1.5"
 description = "A tool for importing GS1 Global Product Classification (GPC) data into SQL databases"
 readme = "README.md"
 authors = [
@@ -50,9 +50,9 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mcgarrah/gs1_gpc_import"
-"Bug Tracker" = "https://github.com/mcgarrah/gs1_gpc_import/issues"
-Repository = "https://github.com/mcgarrah/gs1_gpc_import"
+Homepage = "https://github.com/mcgarrah/gs1_gpc_python"
+"Bug Tracker" = "https://github.com/mcgarrah/gs1_gpc_python/issues"
+Repository = "https://github.com/mcgarrah/gs1_gpc_python"
 Documentation = "https://gs1-gpc.readthedocs.io/"
 
 [tool.setuptools]

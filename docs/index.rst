@@ -7,8 +7,8 @@ A tool for importing GS1 Global Product Classification (GPC) data into SQL datab
    :target: https://gs1-gpc.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
 
-.. image:: https://img.shields.io/github/license/mcgarrah/gs1_gpc_import
-   :target: https://github.com/mcgarrah/gs1_gpc_import/blob/main/LICENSE
+.. image:: https://img.shields.io/github/license/mcgarrah/gs1_gpc_python
+   :target: https://github.com/mcgarrah/gs1_gpc_python/blob/main/LICENSE
    :alt: License
 
 Key Features
@@ -28,8 +28,8 @@ Install from source:
 
 .. code-block:: bash
 
-   git clone https://github.com/mcgarrah/gs1_gpc_import.git
-   cd gs1_gpc_import
+   git clone https://github.com/mcgarrah/gs1_gpc_python.git
+   cd gs1_gpc_python
    pip install -r requirements.txt
    pip install -e .
 
@@ -61,7 +61,6 @@ Contents
    :maxdepth: 2
    :caption: API Reference
 
-   api/cli
    api/db
    api/parser
    api/downloader

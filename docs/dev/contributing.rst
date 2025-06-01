@@ -10,8 +10,8 @@ Setting Up Development Environment
 
    .. code-block:: bash
 
-      git clone https://github.com/mcgarrah/gs1_gpc_import.git
-      cd gs1_gpc_import
+      git clone https://github.com/mcgarrah/gs1_gpc_python.git
+      cd gs1_gpc_python
 
 2. Create and activate a virtual environment:
 
