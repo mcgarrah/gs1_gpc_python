@@ -6,8 +6,8 @@ Example script demonstrating basic usage of the gs1_gpc package.
 import os
 import logging
 from gs1_gpc.db import DatabaseConnection, setup_database
-from gs1_gpc.parser import process_gpc_xml
-from gs1_gpc.downloader import find_latest_xml_file
+from gs1_gpc.parser import GPCParser
+from gs1_gpc.downloader import GPCDownloader
 
 # Configure logging
 logging.basicConfig(
@@ -24,8 +24,11 @@ DB_FILE = os.path.join(SCRIPT_DIR, 'instances', 'example_import.sqlite3')
 
 def main():
     """Main function to demonstrate basic import."""
+    # Create a downloader instance
+    downloader = GPCDownloader(download_dir=GPC_DOWNLOAD_DIR)
+    
     # Find the latest XML file
-    xml_file = find_latest_xml_file(GPC_DOWNLOAD_DIR)
+    xml_file = downloader.find_latest_xml_file()
     if not xml_file:
         logging.error("No XML files found in %s", GPC_DOWNLOAD_DIR)
         return
@@ -38,8 +41,9 @@ def main():
         logging.error("Failed to setup database")
         return
     
-    # Process XML file
-    process_gpc_xml(xml_file, db_connection)
+    # Create parser and process XML file
+    parser = GPCParser(db_connection)
+    parser.process_xml(xml_file)
     
     # Close database connection
     db_connection.close()

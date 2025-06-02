@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-06-15
+
+### Added
+- New class-based API with GPCDownloader, GPCParser, and GPCExporter classes
+- Added target_directory parameter to download_latest_gpc_xml()
+- New example for filtering and importing only the Food/Beverage segment
+- Enhanced documentation for the new class-based API
+- Improved code comments for better readability and onboarding
+
+### Changed
+- Refactored function-based API to use class-based approach
+- Updated CLI to use new class-based API with additional options
+- Reorganized internal processing logic for better maintainability
+- Enhanced error handling and fallback mechanisms
+
+### Fixed
+- Improved handling of download directory paths
+- Better error messages when files are not found
+
 ## [0.1.5] - 2025-06-01
 
 ### Added

@@ -12,9 +12,9 @@ from pathlib import Path
 
 from . import __version__
 from .db import DatabaseConnection, setup_database
-from .parser import process_gpc_xml
-from .downloader import download_latest_gpc_xml, find_latest_xml_file
-from .exporter import dump_database_to_sql
+from .parser import GPCParser
+from .downloader import GPCDownloader
+from .exporter import GPCExporter
 
 # Default paths
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,10 +38,11 @@ def cli():
               help='Database type (sqlite or postgresql)')
 @click.option('--download', is_flag=True, help='Download the latest GPC data before import')
 @click.option('--language', default='en', help='Language code for GPC data download (default: en)')
+@click.option('--download-dir', help='Directory where GPC files will be downloaded')
 @click.option('--dump-sql', is_flag=True, help='Dump database tables to SQL file after import')
 @click.option('--verbose', '-v', is_flag=True, help='Enable detailed debug logging')
 @click.option('--quiet', '-q', is_flag=True, help='Suppress all logging except errors')
-def import_gpc(xml_file, db_file, db_type, download, language, dump_sql, verbose, quiet):
+def import_gpc(xml_file, db_file, db_type, download, language, download_dir, dump_sql, verbose, quiet):
     """Import GS1 GPC data into a database"""
     # Configure logging
     if quiet:
@@ -61,6 +62,9 @@ def import_gpc(xml_file, db_file, db_type, download, language, dump_sql, verbose
     start_time = datetime.now()
     logging.info("Import started at: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
     
+    # Create downloader with appropriate directory
+    downloader = GPCDownloader(download_dir=download_dir, language_code=language)
+    
     # Determine which XML file to use
     if xml_file:
         # User explicitly specified an XML file
@@ -69,11 +73,11 @@ def import_gpc(xml_file, db_file, db_type, download, language, dump_sql, verbose
     elif download:
         # User wants to download the latest data
         logging.info("Download flag set. Attempting to download latest GPC data in language '%s'...", language)
-        xml_file_path = download_latest_gpc_xml(language)
+        xml_file_path = downloader.download_latest_gpc_xml()
     else:
         # Find the latest cached XML file
         logging.info("Looking for latest cached XML file for language '%s'...", language)
-        xml_file_path = find_latest_xml_file(GPC_DOWNLOAD_DIR, language)
+        xml_file_path = downloader.find_latest_xml_file()
         if not xml_file_path:
             logging.warning("No cached XML files found. Using fallback file.")
             xml_file_path = DEFAULT_FALLBACK_XML_FILE
@@ -91,8 +95,9 @@ def import_gpc(xml_file, db_file, db_type, download, language, dump_sql, verbose
         logging.error("Failed to setup database. Exiting.")
         sys.exit(1)
     
-    # Process XML file
-    counters = process_gpc_xml(xml_file_path, db_connection)
+    # Create parser and process XML file
+    parser = GPCParser(db_connection)
+    counters = parser.process_xml(xml_file_path)
     
     # Close database connection
     db_connection.close()
@@ -100,7 +105,8 @@ def import_gpc(xml_file, db_file, db_type, download, language, dump_sql, verbose
     # Dump database to SQL if requested
     if dump_sql and db_type == 'sqlite':
         logging.info("Dump SQL flag set. Dumping database to SQL file...")
-        sql_file_path = dump_database_to_sql(db_file, language)
+        exporter = GPCExporter(export_dir=download_dir, language_code=language)
+        sql_file_path = exporter.dump_database_to_sql(db_file)
         if sql_file_path:
             logging.info("Database dumped to SQL file: %s", sql_file_path)
         else:
@@ -118,7 +124,8 @@ def import_gpc(xml_file, db_file, db_type, download, language, dump_sql, verbose
 @cli.command()
 @click.option('--db-file', default=DEFAULT_DB_FILE, help='Path to the SQLite database file')
 @click.option('--language', default='en', help='Language code for the SQL filename')
-def export_sql(db_file, language):
+@click.option('--output-dir', help='Directory where SQL file will be saved')
+def export_sql(db_file, language, output_dir):
     """Export database tables to SQL file"""
     # Configure logging
     logging.basicConfig(
@@ -133,7 +140,8 @@ def export_sql(db_file, language):
         sys.exit(1)
     
     # Export database to SQL
-    sql_file_path = dump_database_to_sql(db_file, language)
+    exporter = GPCExporter(export_dir=output_dir, language_code=language)
+    sql_file_path = exporter.dump_database_to_sql(db_file)
     if sql_file_path:
         logging.info("Database dumped to SQL file: %s", sql_file_path)
     else:
