@@ -66,17 +66,20 @@ You can control the logging level with the ``--verbose`` and ``--quiet`` options
 Programmatic Usage
 ----------------
 
-You can use the GS1 GPC tool as a Python library in your own code:
+You can use the GS1 GPC tool as a Python library in your own code using the class-based API:
 
 .. code-block:: python
 
    from gs1_gpc.db import DatabaseConnection, setup_database
-   from gs1_gpc.parser import process_gpc_xml
-   from gs1_gpc.downloader import download_latest_gpc_xml
-   from gs1_gpc.exporter import dump_database_to_sql
+   from gs1_gpc.parser import GPCParser
+   from gs1_gpc.downloader import GPCDownloader
+   from gs1_gpc.exporter import GPCExporter
+   
+   # Create a downloader instance
+   downloader = GPCDownloader(download_dir="/path/to/downloads", language_code="en")
    
    # Download the latest GPC data
-   xml_file = download_latest_gpc_xml(language='en')
+   xml_file = downloader.download_latest_gpc_xml()
    
    # Create database connection
    db_connection = DatabaseConnection('my_database.sqlite3')
@@ -84,14 +87,16 @@ You can use the GS1 GPC tool as a Python library in your own code:
    # Setup database
    setup_database(db_connection)
    
-   # Process XML file
-   process_gpc_xml(xml_file, db_connection)
+   # Create parser and process XML file
+   parser = GPCParser(db_connection)
+   parser.process_xml(xml_file)
    
    # Close database connection
    db_connection.close()
    
    # Export database to SQL
-   dump_database_to_sql('my_database.sqlite3', language='en')
+   exporter = GPCExporter(export_dir="/path/to/exports", language_code="en")
+   exporter.dump_database_to_sql('my_database.sqlite3')
 
 Using Models and Callbacks
 ------------------------
@@ -101,7 +106,7 @@ You can use the models and callbacks to process GPC data in a more structured wa
 .. code-block:: python
 
    from gs1_gpc.db import DatabaseConnection, setup_database
-   from gs1_gpc.parser import process_gpc_xml
+   from gs1_gpc.parser import GPCParser
    from gs1_gpc.models import GPCModels
    from gs1_gpc.callbacks import GPCProcessedCallback
    
@@ -117,6 +122,16 @@ You can use the models and callbacks to process GPC data in a more structured wa
    db_connection = DatabaseConnection('my_database.sqlite3')
    setup_database(db_connection)
    
-   # Process XML file with callback
+   # Create parser with callback and process XML file
    callback = MyCallback()
-   process_gpc_xml('gpc_data.xml', db_connection, callback)
+   parser = GPCParser(db_connection, callback=callback)
+   parser.process_xml('gpc_data.xml')
+
+Food Segment Example
+------------------
+
+The package includes an advanced example that demonstrates how to import only the Food/Beverage segment:
+
+.. literalinclude:: ../../examples/food_segment_import.py
+   :language: python
+   :linenos:

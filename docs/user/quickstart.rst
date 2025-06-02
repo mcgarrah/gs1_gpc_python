@@ -78,16 +78,19 @@ PostgreSQL Support
 Python API Usage
 --------------
 
-You can also use the package as a Python library:
+You can also use the package as a Python library. The library now provides a class-based API:
 
 .. code-block:: python
 
    from gs1_gpc.db import DatabaseConnection, setup_database
-   from gs1_gpc.parser import process_gpc_xml
-   from gs1_gpc.downloader import find_latest_xml_file
+   from gs1_gpc.parser import GPCParser
+   from gs1_gpc.downloader import GPCDownloader
 
+   # Create a downloader instance
+   downloader = GPCDownloader(download_dir="/path/to/downloads", language_code="en")
+   
    # Find the latest XML file
-   xml_file = find_latest_xml_file()
+   xml_file = downloader.find_latest_xml_file()
    
    # Create database connection
    db_connection = DatabaseConnection("my_database.sqlite3")
@@ -95,8 +98,18 @@ You can also use the package as a Python library:
    # Setup database
    setup_database(db_connection)
    
-   # Process XML file
-   process_gpc_xml(xml_file, db_connection)
+   # Create parser and process XML file
+   parser = GPCParser(db_connection)
+   parser.process_xml(xml_file)
    
    # Close database connection
    db_connection.close()
+
+Basic Example
+------------
+
+The package includes a basic example that demonstrates how to import GPC data:
+
+.. literalinclude:: ../../examples/basic_import.py
+   :language: python
+   :linenos:
