@@ -63,6 +63,8 @@ Contents
 
    api/db
    api/parser
+   api/models
+   api/callbacks
    api/downloader
    api/exporter
 

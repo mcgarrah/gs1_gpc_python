@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gs1_gpc"
-version = "0.1.5"
+version = "0.2.1"
 description = "A tool for importing GS1 Global Product Classification (GPC) data into SQL databases"
 readme = "README.md"
 authors = [

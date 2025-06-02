@@ -10,6 +10,8 @@ from .db import (
     insert_segment, insert_family, insert_class, insert_brick,
     insert_attribute_type, insert_attribute_value
 )
+from .models import GPCModels
+from .callbacks import GPCProcessedCallback
 
 # XML tag and attribute names
 TAG_SEGMENT = 'segment'
@@ -23,13 +25,14 @@ ATTR_TEXT = 'text'
 EXPECTED_ROOT_TAG = 'schema'
 
 
-def process_gpc_xml(xml_file_path, db_connection):
+def process_gpc_xml(xml_file_path, db_connection, callback=None):
     """
     Parse GS1 GPC XML file and insert data into the database.
     
     Args:
         xml_file_path (str): Path to the GS1 GPC XML file
         db_connection: Database connection object
+        callback (GPCProcessedCallback, optional): Callback for processing events
         
     Returns:
         dict: Counters with processing statistics
@@ -45,6 +48,9 @@ def process_gpc_xml(xml_file_path, db_connection):
         'attribute_types_processed': 0, 'attribute_types_inserted': 0,
         'attribute_values_processed': 0, 'attribute_values_inserted': 0,
     }
+    
+    # Initialize models container
+    models = GPCModels()
     
     try:
         # Setup database connection
@@ -93,8 +99,17 @@ def process_gpc_xml(xml_file_path, db_connection):
                 logging.warning("Skipping segment element missing code or description.")
                 continue
                 
-            if insert_segment(cursor, segment_code, segment_desc):
+            is_new = insert_segment(cursor, segment_code, segment_desc)
+            if is_new:
                 counters['segments_inserted'] += 1
+            
+            # Add to models
+            segment = GPCModels.Segment(segment_code, segment_desc)
+            models.segments[segment_code] = segment
+            
+            # Call callback if provided
+            if callback:
+                callback.on_segment_processed(segment_code, segment_desc, is_new)
                 
             # Process families
             for family_elem in segment_elem.findall(TAG_FAMILY):
@@ -106,8 +121,17 @@ def process_gpc_xml(xml_file_path, db_connection):
                     logging.warning("Skipping family element missing code or description.")
                     continue
                     
-                if insert_family(cursor, family_code, family_desc, segment_code):
+                is_new = insert_family(cursor, family_code, family_desc, segment_code)
+                if is_new:
                     counters['families_inserted'] += 1
+                
+                # Add to models
+                family = GPCModels.Family(family_code, family_desc, segment_code)
+                models.segments[segment_code].families[family_code] = family
+                
+                # Call callback if provided
+                if callback:
+                    callback.on_family_processed(family_code, family_desc, segment_code, is_new)
                     
                 # Process classes
                 for class_elem in family_elem.findall(TAG_CLASS):
@@ -119,8 +143,17 @@ def process_gpc_xml(xml_file_path, db_connection):
                         logging.warning("Skipping class element missing code or description.")
                         continue
                         
-                    if insert_class(cursor, class_code, class_desc, family_code):
+                    is_new = insert_class(cursor, class_code, class_desc, family_code)
+                    if is_new:
                         counters['classes_inserted'] += 1
+                    
+                    # Add to models
+                    class_obj = GPCModels.Class(class_code, class_desc, family_code)
+                    models.segments[segment_code].families[family_code].classes[class_code] = class_obj
+                    
+                    # Call callback if provided
+                    if callback:
+                        callback.on_class_processed(class_code, class_desc, family_code, is_new)
                         
                     # Process bricks
                     for brick_elem in class_elem.findall(TAG_BRICK):
@@ -132,8 +165,17 @@ def process_gpc_xml(xml_file_path, db_connection):
                             logging.warning("Skipping brick element missing code or description.")
                             continue
                             
-                        if insert_brick(cursor, brick_code, brick_desc, class_code):
+                        is_new = insert_brick(cursor, brick_code, brick_desc, class_code)
+                        if is_new:
                             counters['bricks_inserted'] += 1
+                        
+                        # Add to models
+                        brick = GPCModels.Brick(brick_code, brick_desc, class_code)
+                        models.segments[segment_code].families[family_code].classes[class_code].bricks[brick_code] = brick
+                        
+                        # Call callback if provided
+                        if callback:
+                            callback.on_brick_processed(brick_code, brick_desc, class_code, is_new)
                             
                         # Process attribute types
                         for att_type_elem in brick_elem.findall(TAG_ATTRIB_TYPE):
@@ -145,8 +187,17 @@ def process_gpc_xml(xml_file_path, db_connection):
                                 logging.warning("Skipping attribute type element missing code or description.")
                                 continue
                                 
-                            if insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
+                            is_new = insert_attribute_type(cursor, att_type_code, att_type_text, brick_code)
+                            if is_new:
                                 counters['attribute_types_inserted'] += 1
+                            
+                            # Add to models
+                            att_type = GPCModels.AttributeType(att_type_code, att_type_text, brick_code)
+                            models.segments[segment_code].families[family_code].classes[class_code].bricks[brick_code].attribute_types[att_type_code] = att_type
+                            
+                            # Call callback if provided
+                            if callback:
+                                callback.on_attribute_type_processed(att_type_code, att_type_text, brick_code, is_new)
                                 
                             # Process attribute values
                             for att_value_elem in att_type_elem.findall(TAG_ATTRIB_VALUE):
@@ -158,8 +209,17 @@ def process_gpc_xml(xml_file_path, db_connection):
                                     logging.warning("Skipping attribute value element missing code or description.")
                                     continue
                                     
-                                if insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code):
+                                is_new = insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code)
+                                if is_new:
                                     counters['attribute_values_inserted'] += 1
+                                
+                                # Add to models
+                                att_value = GPCModels.AttributeValue(att_value_code, att_value_text, att_type_code)
+                                models.segments[segment_code].families[family_code].classes[class_code].bricks[brick_code].attribute_types[att_type_code].attribute_values[att_value_code] = att_value
+                                
+                                # Call callback if provided
+                                if callback:
+                                    callback.on_attribute_value_processed(att_value_code, att_value_text, att_type_code, is_new)
         
         # Commit changes
         db_connection.commit()
@@ -186,5 +246,9 @@ def process_gpc_xml(xml_file_path, db_connection):
         logging.info("Attribute Values processed: %s, Inserted (new): %s", 
                     counters['attribute_values_processed'], counters['attribute_values_inserted'])
         logging.info("GS1 GPC XML processing finished.")
+        
+        # Call completion callback if provided
+        if callback:
+            callback.on_processing_complete(counters)
         
     return counters

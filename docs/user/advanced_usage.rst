@@ -92,3 +92,31 @@ You can use the GS1 GPC tool as a Python library in your own code:
    
    # Export database to SQL
    dump_database_to_sql('my_database.sqlite3', language='en')
+
+Using Models and Callbacks
+------------------------
+
+You can use the models and callbacks to process GPC data in a more structured way:
+
+.. code-block:: python
+
+   from gs1_gpc.db import DatabaseConnection, setup_database
+   from gs1_gpc.parser import process_gpc_xml
+   from gs1_gpc.models import GPCModels
+   from gs1_gpc.callbacks import GPCProcessedCallback
+   
+   # Custom callback implementation
+   class MyCallback(GPCProcessedCallback):
+       def on_brick_processed(self, brick_code, brick_desc, class_code, is_new):
+           print(f"Processed brick: {brick_code} - {brick_desc}")
+       
+       def on_processing_complete(self, counters):
+           print(f"Processing complete. Processed {counters['bricks_processed']} bricks.")
+   
+   # Create database connection
+   db_connection = DatabaseConnection('my_database.sqlite3')
+   setup_database(db_connection)
+   
+   # Process XML file with callback
+   callback = MyCallback()
+   process_gpc_xml('gpc_data.xml', db_connection, callback)
