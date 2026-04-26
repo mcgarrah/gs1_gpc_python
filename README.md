@@ -128,9 +128,15 @@ gpc import-gpc --help
 
 ## Database Schema
 
-The database uses the following schema with all tables prefixed with "gpc_":
+The database uses the following schema with all tables prefixed with "gpc_".
+
+The core hierarchy uses 1:N foreign keys (segments → families → classes → bricks).
+Attribute types and attribute values are global entities shared across bricks, so
+their relationships are stored in junction tables to preserve the many-to-many
+mappings from the GS1 XML.
 
 ```sql
+-- Core hierarchy
 CREATE TABLE gpc_segments (
     segment_code TEXT PRIMARY KEY,
     description TEXT
@@ -157,18 +163,32 @@ CREATE TABLE gpc_bricks (
     FOREIGN KEY (class_code) REFERENCES gpc_classes (class_code)
 );
 
+-- Attribute types and values (global, shared across bricks)
 CREATE TABLE gpc_attribute_types (
     att_type_code TEXT PRIMARY KEY,
-    att_type_text TEXT,
-    brick_code TEXT,
-    FOREIGN KEY (brick_code) REFERENCES gpc_bricks (brick_code)
+    att_type_text TEXT
 );
 
 CREATE TABLE gpc_attribute_values (
     att_value_code TEXT PRIMARY KEY,
-    att_value_text TEXT,
-    att_type_code TEXT,
+    att_value_text TEXT
+);
+
+-- Junction tables (many-to-many relationships)
+CREATE TABLE gpc_brick_attribute_types (
+    brick_code TEXT NOT NULL,
+    att_type_code TEXT NOT NULL,
+    PRIMARY KEY (brick_code, att_type_code),
+    FOREIGN KEY (brick_code) REFERENCES gpc_bricks (brick_code),
     FOREIGN KEY (att_type_code) REFERENCES gpc_attribute_types (att_type_code)
+);
+
+CREATE TABLE gpc_attribute_type_values (
+    att_type_code TEXT NOT NULL,
+    att_value_code TEXT NOT NULL,
+    PRIMARY KEY (att_type_code, att_value_code),
+    FOREIGN KEY (att_type_code) REFERENCES gpc_attribute_types (att_type_code),
+    FOREIGN KEY (att_value_code) REFERENCES gpc_attribute_values (att_value_code)
 );
 ```
 
@@ -223,6 +243,36 @@ JOIN gpc_classes ON gpc_families.family_code = gpc_classes.family_code
 JOIN gpc_bricks ON gpc_classes.class_code = gpc_bricks.class_code
 WHERE gpc_segments.segment_code = '50000000' 
 LIMIT 16;
+```
+
+### Get all attribute types for a brick (via junction table)
+
+```sql
+SELECT at.att_type_code, at.att_type_text
+FROM gpc_brick_attribute_types bat
+JOIN gpc_attribute_types at ON bat.att_type_code = at.att_type_code
+WHERE bat.brick_code = '10000309'
+ORDER BY at.att_type_code;
+```
+
+### Get all attribute values for an attribute type (via junction table)
+
+```sql
+SELECT av.att_value_code, av.att_value_text
+FROM gpc_attribute_type_values atv
+JOIN gpc_attribute_values av ON atv.att_value_code = av.att_value_code
+WHERE atv.att_type_code = '20000001'
+ORDER BY av.att_value_code;
+```
+
+### Find all bricks that share a given attribute type
+
+```sql
+SELECT b.brick_code, b.description
+FROM gpc_brick_attribute_types bat
+JOIN gpc_bricks b ON bat.brick_code = b.brick_code
+WHERE bat.att_type_code = '20000142'
+ORDER BY b.brick_code;
 ```
 
 ## Development
