@@ -91,6 +91,13 @@ def setup_database(db_connection):
     """
     Create GPC tables if they don't exist.
     
+    The schema uses junction tables for the many-to-many relationships
+    between bricks and attribute types, and between attribute types and
+    attribute values. In the GS1 GPC XML, the same attribute type can
+    appear on many bricks, and the same attribute value can appear under
+    many attribute types. Previous versions used single foreign keys
+    which silently dropped these relationships via INSERT OR IGNORE.
+    
     Args:
         db_connection (DatabaseConnection): Database connection object
         
@@ -102,7 +109,7 @@ def setup_database(db_connection):
         return False
         
     try:
-        # Create tables with portable SQL syntax
+        # Core hierarchy tables (1:N relationships)
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS gpc_segments (
             segment_code TEXT PRIMARY KEY,
@@ -133,20 +140,38 @@ def setup_database(db_connection):
             FOREIGN KEY (class_code) REFERENCES gpc_classes (class_code)
         );
         ''')
+
+        # Attribute types and values are global (shared across bricks)
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS gpc_attribute_types (
             att_type_code TEXT PRIMARY KEY,
-            att_type_text TEXT,
-            brick_code TEXT,
-            FOREIGN KEY (brick_code) REFERENCES gpc_bricks (brick_code)
+            att_type_text TEXT
         );
         ''')
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS gpc_attribute_values (
             att_value_code TEXT PRIMARY KEY,
-            att_value_text TEXT,
-            att_type_code TEXT,
+            att_value_text TEXT
+        );
+        ''')
+
+        # Junction tables for many-to-many relationships
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS gpc_brick_attribute_types (
+            brick_code TEXT NOT NULL,
+            att_type_code TEXT NOT NULL,
+            PRIMARY KEY (brick_code, att_type_code),
+            FOREIGN KEY (brick_code) REFERENCES gpc_bricks (brick_code),
             FOREIGN KEY (att_type_code) REFERENCES gpc_attribute_types (att_type_code)
+        );
+        ''')
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS gpc_attribute_type_values (
+            att_type_code TEXT NOT NULL,
+            att_value_code TEXT NOT NULL,
+            PRIMARY KEY (att_type_code, att_value_code),
+            FOREIGN KEY (att_type_code) REFERENCES gpc_attribute_types (att_type_code),
+            FOREIGN KEY (att_value_code) REFERENCES gpc_attribute_values (att_value_code)
         );
         ''')
         
@@ -255,7 +280,10 @@ def insert_brick(cursor, brick_code, description, class_code):
 
 def insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
     """
-    Insert an attribute type record.
+    Insert an attribute type record and link it to a brick.
+    
+    Inserts the attribute type into the global table (if not already present)
+    and creates the brick-to-attribute-type junction record.
     
     Args:
         cursor: Database cursor
@@ -264,14 +292,20 @@ def insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
         brick_code (str): Brick code
         
     Returns:
-        bool: True if successful, False otherwise
+        bool: True if the attribute type was newly inserted, False if it already existed
     """
     try:
         cursor.execute('''
-        INSERT OR IGNORE INTO gpc_attribute_types (att_type_code, att_type_text, brick_code)
-        VALUES (?, ?, ?);
-        ''', (att_type_code, att_type_text, brick_code))
-        return cursor.rowcount > 0
+        INSERT OR IGNORE INTO gpc_attribute_types (att_type_code, att_type_text)
+        VALUES (?, ?);
+        ''', (att_type_code, att_type_text))
+        is_new = cursor.rowcount > 0
+        # Always insert the junction record (brick <-> attribute type)
+        cursor.execute('''
+        INSERT OR IGNORE INTO gpc_brick_attribute_types (brick_code, att_type_code)
+        VALUES (?, ?);
+        ''', (brick_code, att_type_code))
+        return is_new
     except Exception as e:
         logging.error("Error inserting attribute type %s: %s", att_type_code, e)
         return False
@@ -279,7 +313,10 @@ def insert_attribute_type(cursor, att_type_code, att_type_text, brick_code):
 
 def insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code):
     """
-    Insert an attribute value record.
+    Insert an attribute value record and link it to an attribute type.
+    
+    Inserts the attribute value into the global table (if not already present)
+    and creates the attribute-type-to-value junction record.
     
     Args:
         cursor: Database cursor
@@ -288,14 +325,20 @@ def insert_attribute_value(cursor, att_value_code, att_value_text, att_type_code
         att_type_code (str): Attribute type code
         
     Returns:
-        bool: True if successful, False otherwise
+        bool: True if the attribute value was newly inserted, False if it already existed
     """
     try:
         cursor.execute('''
-        INSERT OR IGNORE INTO gpc_attribute_values (att_value_code, att_value_text, att_type_code)
-        VALUES (?, ?, ?);
-        ''', (att_value_code, att_value_text, att_type_code))
-        return cursor.rowcount > 0
+        INSERT OR IGNORE INTO gpc_attribute_values (att_value_code, att_value_text)
+        VALUES (?, ?);
+        ''', (att_value_code, att_value_text))
+        is_new = cursor.rowcount > 0
+        # Always insert the junction record (attribute type <-> attribute value)
+        cursor.execute('''
+        INSERT OR IGNORE INTO gpc_attribute_type_values (att_type_code, att_value_code)
+        VALUES (?, ?);
+        ''', (att_type_code, att_value_code))
+        return is_new
     except Exception as e:
         logging.error("Error inserting attribute value %s: %s", att_value_code, e)
         return False

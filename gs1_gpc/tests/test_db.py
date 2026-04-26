@@ -36,7 +36,7 @@ class TestDatabaseConnection(unittest.TestCase):
         conn, cursor = db_connection.connect()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'gpc_%';")
         tables = cursor.fetchall()
-        self.assertEqual(len(tables), 6)  # 6 tables should be created
+        self.assertEqual(len(tables), 8)  # 6 entity tables + 2 junction tables
         db_connection.close()
 
 if __name__ == '__main__':

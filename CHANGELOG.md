@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-04-26
+
+### BREAKING CHANGES
+- **Schema redesign for attribute tables.** The `gpc_attribute_types` table no longer
+  has a `brick_code` column and `gpc_attribute_values` no longer has an `att_type_code`
+  column. These many-to-many relationships are now stored in junction tables:
+  - `gpc_brick_attribute_types` (brick_code, att_type_code)
+  - `gpc_attribute_type_values` (att_type_code, att_value_code)
+- **Existing databases must be rebuilt.** Drop and re-import after upgrading.
+- Any code that queries `gpc_attribute_types.brick_code` or
+  `gpc_attribute_values.att_type_code` must be updated to join through the
+  junction tables instead.
+
+### Fixed
+- **Silent data loss on attribute import.** The previous schema used single foreign
+  keys with `INSERT OR IGNORE`, which silently dropped relationships when the same
+  attribute type appeared on multiple bricks (8,006 brick-type relationships lost)
+  or the same attribute value appeared under multiple types (6,913 type-value
+  relationships lost across the full GPC dataset). Junction tables now preserve
+  all relationships from the GS1 XML.
+
+### Changed
+- `insert_attribute_type()` now inserts into both `gpc_attribute_types` and
+  `gpc_brick_attribute_types` (junction). Function signature unchanged.
+- `insert_attribute_value()` now inserts into both `gpc_attribute_values` and
+  `gpc_attribute_type_values` (junction). Function signature unchanged.
+- `setup_database()` creates 8 tables (was 6).
+
 ## [0.3.1] - 2025-06-15
 
 ### Added
